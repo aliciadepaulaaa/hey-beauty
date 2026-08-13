@@ -7,29 +7,28 @@ import {
   Link,
   useParams,
 } from "react-router-dom";
+
 import "./style.css";
 
-const API_URL = "http://localhost:3000";
-
 /* =========================
-   FORMATAÇÃO DE PREÇO
+   CONFIGURAÇÃO DA API
 ========================= */
 
-const money = (value) => {
-  return (Number(value || 0) / 100).toLocaleString("pt-BR", {
+const API_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3000"
+    : "";
+
+/* =========================
+   FUNÇÕES AUXILIARES
+========================= */
+
+const money = (value) =>
+  (Number(value || 0) / 100).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
   });
-};
 
-/*
-  O servidor salva o preço em CENTAVOS.
-
-  Exemplos:
-  80       -> servidor salva 8000
-  80,00    -> servidor salva 8000
-  129,90   -> servidor salva 12990
-*/
 const parsePrice = (value) => {
   if (typeof value === "number") {
     return value;
@@ -43,22 +42,20 @@ const parsePrice = (value) => {
 
   text = text.replace(/\s/g, "");
 
-  // Exemplo: 1.299,90
   if (text.includes(",") && text.includes(".")) {
-    text = text.replace(/\./g, "").replace(",", ".");
+    text = text
+      .replace(/\./g, "")
+      .replace(",", ".");
   } else {
-    // Exemplo: 80,00
     text = text.replace(",", ".");
   }
 
   const number = Number(text);
 
-  return Number.isFinite(number) ? number : 0;
+  return Number.isFinite(number)
+    ? number
+    : 0;
 };
-
-/* =========================
-   IMAGENS
-========================= */
 
 const imageUrl = (image) => {
   if (!image) {
@@ -72,29 +69,33 @@ const imageUrl = (image) => {
     return image;
   }
 
-  if (image.startsWith("/")) {
-    return API_URL + image;
-  }
-
-  return API_URL + "/" + image;
+  return API_URL + image;
 };
 
-/* =========================
-   API
-========================= */
+const api = async (
+  url,
+  options = {}
+) => {
+  const finalUrl =
+    url.startsWith("http")
+      ? url
+      : API_URL + url;
 
-const api = async (url, options = {}) => {
-  const finalUrl = url.startsWith("http")
-    ? url
-    : API_URL + url;
+  const response =
+    await fetch(
+      finalUrl,
+      options
+    );
 
-  const response = await fetch(finalUrl, options);
-
-  const data = await response.json().catch(() => ({}));
+  const data =
+    await response
+      .json()
+      .catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
-      data.error || "Ocorreu um erro."
+      data.error ||
+      "Ocorreu um erro."
     );
   }
 
@@ -106,15 +107,18 @@ const api = async (url, options = {}) => {
 ========================= */
 
 function App() {
-  const [cart, setCart] = useState(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem("cart") || "[]"
-      );
-    } catch {
-      return [];
-    }
-  });
+  const [cart, setCart] =
+    useState(() => {
+      try {
+        return JSON.parse(
+          localStorage.getItem(
+            "cart"
+          ) || "[]"
+        );
+      } catch {
+        return [];
+      }
+    });
 
   useEffect(() => {
     localStorage.setItem(
@@ -129,7 +133,7 @@ function App() {
     color = ""
   ) => {
     setCart((currentCart) => {
-      const existingIndex =
+      const index =
         currentCart.findIndex(
           (item) =>
             item.id === product.id &&
@@ -137,13 +141,16 @@ function App() {
             item.color === color
         );
 
-      if (existingIndex >= 0) {
-        const updated = [...currentCart];
+      if (index >= 0) {
+        const updated = [
+          ...currentCart,
+        ];
 
-        updated[existingIndex] = {
-          ...updated[existingIndex],
+        updated[index] = {
+          ...updated[index],
           quantity:
-            updated[existingIndex].quantity + 1,
+            updated[index]
+              .quantity + 1,
         };
 
         return updated;
@@ -155,7 +162,8 @@ function App() {
           id: product.id,
           name: product.name,
           price: product.price,
-          image: product.image,
+          image:
+            product.image || "",
           size,
           color,
           quantity: 1,
@@ -164,7 +172,9 @@ function App() {
     });
   };
 
-  const removeFromCart = (index) => {
+  const removeFromCart = (
+    index
+  ) => {
     setCart((currentCart) =>
       currentCart.filter(
         (_, i) => i !== index
@@ -191,7 +201,8 @@ function App() {
             Carrinho (
             {cart.reduce(
               (total, item) =>
-                total + item.quantity,
+                total +
+                item.quantity,
               0
             )}
             )
@@ -213,7 +224,9 @@ function App() {
           path="/produto/:id"
           element={
             <ProductPage
-              addToCart={addToCart}
+              addToCart={
+                addToCart
+              }
             />
           }
         />
@@ -263,23 +276,18 @@ function Home() {
   useEffect(() => {
     api("/api/products")
       .then((data) => {
-        /*
-          Proteção contra products.map
-          caso a API retorne objeto em vez de array.
-        */
-        if (Array.isArray(data)) {
-          setProducts(data);
-        } else {
-          setProducts([]);
-          console.error(
-            "A API não retornou uma lista:",
-            data
-          );
-        }
+        setProducts(
+          Array.isArray(data)
+            ? data
+            : []
+        );
       })
       .catch((error) => {
         console.error(error);
-        setError(error.message);
+
+        setError(
+          error.message
+        );
       });
   }, []);
 
@@ -287,15 +295,18 @@ function Home() {
     <main>
       <section className="hero">
         <div>
-          <span>HEY BEAUTY</span>
+          <span>
+            HEY BEAUTY
+          </span>
 
           <h1>
             Seu estilo começa aqui.
           </h1>
 
           <p>
-            Escolha suas peças favoritas
-            e encontre seu próximo look.
+            Escolha suas peças
+            favoritas e encontre
+            seu próximo look.
           </p>
 
           <a
@@ -322,55 +333,62 @@ function Home() {
         )}
 
         <div className="grid">
-          {products.map((product) => (
-            <article
-              className="card"
-              key={product.id}
-            >
-              {product.image ? (
-                <img
-                  src={imageUrl(
-                    product.image
-                  )}
-                  alt={product.name}
-                />
-              ) : (
-                <div className="placeholder">
-                  FOTO DA PEÇA
+          {products.map(
+            (product) => (
+              <article
+                className="card"
+                key={
+                  product.id
+                }
+              >
+                {product.image ? (
+                  <img
+                    src={imageUrl(
+                      product.image
+                    )}
+                    alt={
+                      product.name
+                    }
+                  />
+                ) : (
+                  <div className="placeholder">
+                    FOTO DA PEÇA
+                  </div>
+                )}
+
+                <div className="cardbody">
+                  <h3>
+                    {
+                      product.name
+                    }
+                  </h3>
+
+                  <p>
+                    {
+                      product.description
+                    }
+                  </p>
+
+                  <strong>
+                    {money(
+                      product.price
+                    )}
+                  </strong>
+
+                  <Link
+                    className="btn full"
+                    to={
+                      "/produto/" +
+                      product.id
+                    }
+                  >
+                    Ver detalhes
+                  </Link>
                 </div>
-              )}
-
-              <div className="cardbody">
-                <h3>
-                  {product.name}
-                </h3>
-
-                <p>
-                  {product.description}
-                </p>
-
-                <strong>
-                  {money(product.price)}
-                </strong>
-
-                <Link
-                  className="btn full"
-                  to={`/produto/${product.id}`}
-                >
-                  Ver detalhes
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {!products.length &&
-          !error && (
-            <p>
-              Nenhum produto
-              cadastrado.
-            </p>
+              </article>
+            )
           )}
+        </div>
       </section>
     </main>
   );
@@ -410,7 +428,9 @@ function Product({
   useEffect(() => {
     api("/api/products")
       .then((data) => {
-        if (!Array.isArray(data)) {
+        if (
+          !Array.isArray(data)
+        ) {
           return;
         }
 
@@ -420,7 +440,9 @@ function Product({
               item.id == id
           );
 
-        setProduct(found || null);
+        setProduct(
+          found || null
+        );
       })
       .catch(console.error);
   }, [id]);
@@ -428,9 +450,7 @@ function Product({
   if (!product) {
     return (
       <main className="section">
-        <p>
-          Carregando produto...
-        </p>
+        Carregando produto...
       </main>
     );
   }
@@ -443,7 +463,9 @@ function Product({
             src={imageUrl(
               product.image
             )}
-            alt={product.name}
+            alt={
+              product.name
+            }
           />
         ) : (
           <div className="placeholder big">
@@ -458,11 +480,15 @@ function Product({
         </h1>
 
         <h2>
-          {money(product.price)}
+          {money(
+            product.price
+          )}
         </h2>
 
         <p>
-          {product.description}
+          {
+            product.description
+          }
         </p>
 
         {product.sizes && (
@@ -475,7 +501,8 @@ function Product({
               value={size}
               onChange={(event) =>
                 setSize(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
             >
@@ -507,7 +534,8 @@ function Product({
               value={color}
               onChange={(event) =>
                 setColor(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
             >
@@ -584,7 +612,9 @@ function Cart({
                 >
                   <div>
                     <b>
-                      {item.name}
+                      {
+                        item.name
+                      }
                     </b>
 
                     <small>
@@ -596,7 +626,10 @@ function Cart({
 
                       {" · "}
 
-                      {item.quantity}x
+                      {
+                        item.quantity
+                      }
+                      x
                     </small>
                   </div>
 
@@ -666,49 +699,53 @@ function Checkout({
       0
     );
 
-  async function submit(
-    event
-  ) {
-    event.preventDefault();
+  const submit =
+    async (event) => {
+      event.preventDefault();
 
-    setMessage(
-      "Criando pedido..."
-    );
+      try {
+        const data =
+          await api(
+            "/api/checkout",
+            {
+              method:
+                "POST",
 
-    try {
-      const data = await api(
-        "/api/checkout",
-        {
-          method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+              body:
+                JSON.stringify({
+                  customer:
+                    form,
+                  items:
+                    cart,
+                }),
+            }
+          );
 
-          body: JSON.stringify({
-            customer: form,
-            items: cart,
-          }),
+        if (
+          data.paymentUrl
+        ) {
+          window.location.href =
+            data.paymentUrl;
+
+          return;
         }
-      );
 
-      if (data.paymentUrl) {
-        window.location.href =
-          data.paymentUrl;
-      } else {
         setMessage(
           `Pedido #${data.orderId} criado.`
         );
 
         setCart([]);
+      } catch (error) {
+        setMessage(
+          error.message
+        );
       }
-    } catch (error) {
-      setMessage(
-        error.message
-      );
-    }
-  }
+    };
 
   if (!cart.length) {
     return (
@@ -718,7 +755,7 @@ function Checkout({
         </h1>
 
         <Link to="/">
-          Voltar para a loja
+          Voltar
         </Link>
       </main>
     );
@@ -738,12 +775,11 @@ function Checkout({
             required
             placeholder="Nome completo"
             value={form.name}
-            onChange={(event) =>
+            onChange={(e) =>
               setForm({
                 ...form,
                 name:
-                  event.target
-                    .value,
+                  e.target.value,
               })
             }
           />
@@ -752,26 +788,28 @@ function Checkout({
             required
             type="email"
             placeholder="E-mail"
-            value={form.email}
-            onChange={(event) =>
+            value={
+              form.email
+            }
+            onChange={(e) =>
               setForm({
                 ...form,
                 email:
-                  event.target
-                    .value,
+                  e.target.value,
               })
             }
           />
 
           <input
             placeholder="Telefone"
-            value={form.phone}
-            onChange={(event) =>
+            value={
+              form.phone
+            }
+            onChange={(e) =>
               setForm({
                 ...form,
                 phone:
-                  event.target
-                    .value,
+                  e.target.value,
               })
             }
           />
@@ -779,13 +817,14 @@ function Checkout({
           <input
             required
             placeholder="Endereço completo"
-            value={form.address}
-            onChange={(event) =>
+            value={
+              form.address
+            }
+            onChange={(e) =>
               setForm({
                 ...form,
                 address:
-                  event.target
-                    .value,
+                  e.target.value,
               })
             }
           />
@@ -827,8 +866,7 @@ function Checkout({
         <hr />
 
         <b>
-          Total
-
+          Total{" "}
           <span>
             {money(total)}
           </span>
@@ -843,12 +881,14 @@ function Checkout({
 ========================= */
 
 function Admin() {
-  const [credentials, setCredentials] =
-    useState(() =>
-      localStorage.getItem(
-        "adminCred"
-      ) || ""
-    );
+  const [
+    credentials,
+    setCredentials,
+  ] = useState(() =>
+    localStorage.getItem(
+      "adminCred"
+    ) || ""
+  );
 
   const [products, setProducts] =
     useState([]);
@@ -856,11 +896,11 @@ function Admin() {
   const [orders, setOrders] =
     useState([]);
 
-  const [message, setMessage] =
-    useState("");
-
   const [editingId, setEditingId] =
     useState(null);
+
+  const [message, setMessage] =
+    useState("");
 
   const [form, setForm] =
     useState({
@@ -874,15 +914,14 @@ function Admin() {
       active: true,
     });
 
-  const headers = () => {
-    return credentials
+  const headers = () =>
+    credentials
       ? {
           Authorization:
             "Basic " +
             credentials,
         }
       : {};
-  };
 
   const loadData =
     async () => {
@@ -896,10 +935,6 @@ function Admin() {
             }
           );
 
-        /*
-          Corrige definitivamente
-          o erro products.map.
-        */
         setProducts(
           Array.isArray(
             productsData
@@ -908,28 +943,23 @@ function Admin() {
             : []
         );
 
-        try {
-          const ordersData =
-            await api(
-              "/api/orders",
-              {
-                headers:
-                  headers(),
-              }
-            );
-
-          setOrders(
-            Array.isArray(
-              ordersData
-            )
-              ? ordersData
-              : []
+        const ordersData =
+          await api(
+            "/api/orders",
+            {
+              headers:
+                headers(),
+            }
           );
-        } catch {
-          setOrders([]);
-        }
+
+        setOrders(
+          Array.isArray(
+            ordersData
+          )
+            ? ordersData
+            : []
+        );
       } catch (error) {
-        console.error(error);
         setMessage(
           error.message
         );
@@ -942,10 +972,6 @@ function Admin() {
     }
   }, [credentials]);
 
-  /* =========================
-     LOGIN
-  ========================= */
-
   if (!credentials) {
     return (
       <main className="section admin">
@@ -953,42 +979,34 @@ function Admin() {
           Painel administrativo
         </h1>
 
-        <p>
-          Entre com o usuário e
-          senha do arquivo .env.
-        </p>
-
         <form
           onSubmit={(event) => {
             event.preventDefault();
 
-            const user =
-              event.target.user
-                .value;
-
-            const password =
-              event.target.password
-                .value;
-
             const encoded =
               btoa(
-                `${user}:${password}`
+                event.target
+                  .user.value +
+                  ":" +
+                  event.target
+                    .password
+                    .value
               );
-
-            setCredentials(
-              encoded
-            );
 
             localStorage.setItem(
               "adminCred",
+              encoded
+            );
+
+            setCredentials(
               encoded
             );
           }}
         >
           <input
             name="user"
-            placeholder="Usuário"
             defaultValue="admin"
+            placeholder="Usuário"
           />
 
           <input
@@ -1005,11 +1023,7 @@ function Admin() {
     );
   }
 
-  /* =========================
-     LIMPAR FORMULÁRIO
-  ========================= */
-
-  const clearForm = () => {
+  const resetForm = () => {
     setEditingId(null);
 
     setForm({
@@ -1024,37 +1038,31 @@ function Admin() {
     });
   };
 
-  /* =========================
-     UPLOAD DA FOTO
-  ========================= */
-
   const uploadImage =
     async (event) => {
       const file =
-        event.target.files?.[0];
+        event.target
+          .files?.[0];
 
       if (!file) {
         return;
       }
 
+      const formData =
+        new FormData();
+
+      formData.append(
+        "image",
+        file
+      );
+
       try {
-        setMessage(
-          "Enviando foto..."
-        );
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "image",
-          file
-        );
-
         const data =
           await api(
             "/api/upload",
             {
-              method: "POST",
+              method:
+                "POST",
               headers:
                 headers(),
               body: formData,
@@ -1070,20 +1078,14 @@ function Admin() {
         );
 
         setMessage(
-          "Foto enviada com sucesso!"
+          "Foto enviada!"
         );
       } catch (error) {
-        console.error(error);
-
         setMessage(
           error.message
         );
       }
     };
-
-  /* =========================
-     SALVAR PRODUTO
-  ========================= */
 
   const saveProduct =
     async (event) => {
@@ -1095,149 +1097,89 @@ function Admin() {
             form.price
           );
 
-        if (
-          !Number.isFinite(
-            price
-          ) ||
-          price < 0
-        ) {
-          throw new Error(
-            "Digite um preço válido."
-          );
-        }
-
-        const body = {
-          name: form.name,
-          description:
-            form.description,
-          /*
-            IMPORTANTE:
-            Não multiplicamos por 100 aqui.
-
-            O servidor já faz:
-            Number(b.price) * 100
-          */
-          price: price,
-          stock: Number(
-            form.stock || 0
-          ),
-          sizes: form.sizes,
-          colors: form.colors,
-          image: form.image,
-          active: form.active
-            ? 1
-            : 0,
+        const payload = {
+          ...form,
+          price,
+          stock:
+            Number(
+              form.stock || 0
+            ),
         };
 
-        const url =
+        await api(
           editingId
             ? `/api/admin/products/${editingId}`
-            : "/api/admin/products";
+            : "/api/admin/products",
+          {
+            method:
+              editingId
+                ? "PUT"
+                : "POST",
 
-        await api(url, {
-          method:
-            editingId
-              ? "PUT"
-              : "POST",
+            headers: {
+              ...headers(),
+              "Content-Type":
+                "application/json",
+            },
 
-          headers: {
-            ...headers(),
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(
-            body
-          ),
-        });
-
-        setMessage(
-          "Produto salvo com sucesso!"
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
         );
 
-        clearForm();
+        setMessage(
+          "Produto salvo!"
+        );
+
+        resetForm();
 
         await loadData();
       } catch (error) {
-        console.error(error);
-
         setMessage(
           error.message
         );
       }
     };
 
-  /* =========================
-     EDITAR PRODUTO
-  ========================= */
+  const editProduct = (
+    product
+  ) => {
+    setEditingId(
+      product.id
+    );
 
-  const editProduct =
-    (product) => {
-      setEditingId(
-        product.id
-      );
+    setForm({
+      ...product,
 
-      setForm({
-        name:
-          product.name || "",
+      price: (
+        Number(
+          product.price || 0
+        ) / 100
+      )
+        .toFixed(2)
+        .replace(".", ","),
 
-        description:
-          product.description ||
-          "",
+      active:
+        Boolean(
+          product.active
+        ),
+    });
 
-        /*
-          Banco:
-          8000 centavos
-
-          Campo:
-          80,00
-        */
-        price: (
-          Number(
-            product.price || 0
-          ) / 100
-        )
-          .toFixed(2)
-          .replace(".", ","),
-
-        stock:
-          Number(
-            product.stock || 0
-          ),
-
-        sizes:
-          product.sizes || "",
-
-        colors:
-          product.colors || "",
-
-        image:
-          product.image || "",
-
-        active:
-          Boolean(
-            product.active
-          ),
-      });
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    };
-
-  /* =========================
-     EXCLUIR
-  ========================= */
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   const deleteProduct =
     async (id) => {
-      const confirmed =
-        window.confirm(
-          "Deseja realmente excluir este produto?"
-        );
-
-      if (!confirmed) {
+      if (
+        !window.confirm(
+          "Excluir esta peça?"
+        )
+      ) {
         return;
       }
 
@@ -1245,29 +1187,20 @@ function Admin() {
         await api(
           `/api/admin/products/${id}`,
           {
-            method: "DELETE",
+            method:
+              "DELETE",
             headers:
               headers(),
           }
         );
 
-        setMessage(
-          "Produto excluído."
-        );
-
         await loadData();
       } catch (error) {
-        console.error(error);
-
         setMessage(
           error.message
         );
       }
     };
-
-  /* =========================
-     SAIR
-  ========================= */
 
   const logout = () => {
     localStorage.removeItem(
@@ -1291,47 +1224,39 @@ function Admin() {
         </button>
       </div>
 
-      {/* =========================
-          FORMULÁRIO
-      ========================= */}
-
       <form
         className="panel"
-        onSubmit={
-          saveProduct
-        }
+        onSubmit={saveProduct}
       >
         <h2>
           {editingId
             ? "Editar peça"
-            : "Cadastrar nova peça"}
+            : "Cadastrar peça"}
         </h2>
 
         <input
           required
-          placeholder="Nome da peça"
+          placeholder="Nome"
           value={form.name}
-          onChange={(event) =>
+          onChange={(e) =>
             setForm({
               ...form,
               name:
-                event.target
-                  .value,
+                e.target.value,
             })
           }
         />
 
         <textarea
-          placeholder="Descrição da peça"
+          placeholder="Descrição"
           value={
             form.description
           }
-          onChange={(event) =>
+          onChange={(e) =>
             setForm({
               ...form,
               description:
-                event.target
-                  .value,
+                e.target.value,
             })
           }
         />
@@ -1339,15 +1264,13 @@ function Admin() {
         <input
           required
           type="text"
-          inputMode="decimal"
-          placeholder="Preço (ex.: 80,00)"
+          placeholder="Preço: 80,00"
           value={form.price}
-          onChange={(event) =>
+          onChange={(e) =>
             setForm({
               ...form,
               price:
-                event.target
-                  .value,
+                e.target.value,
             })
           }
         />
@@ -1357,12 +1280,11 @@ function Admin() {
           min="0"
           placeholder="Estoque"
           value={form.stock}
-          onChange={(event) =>
+          onChange={(e) =>
             setForm({
               ...form,
               stock:
-                event.target
-                  .value,
+                e.target.value,
             })
           }
         />
@@ -1370,31 +1292,29 @@ function Admin() {
         <input
           placeholder="Tamanhos: P,M,G"
           value={form.sizes}
-          onChange={(event) =>
+          onChange={(e) =>
             setForm({
               ...form,
               sizes:
-                event.target
-                  .value,
+                e.target.value,
             })
           }
         />
 
         <input
-          placeholder="Cores: Preto,Branco"
+          placeholder="Cores"
           value={form.colors}
-          onChange={(event) =>
+          onChange={(e) =>
             setForm({
               ...form,
               colors:
-                event.target
-                  .value,
+                e.target.value,
             })
           }
         />
 
         <label>
-          Foto da peça
+          Foto
         </label>
 
         <input
@@ -1405,77 +1325,38 @@ function Admin() {
           }
         />
 
-        {/* PRÉ-VISUALIZAÇÃO */}
-
         {form.image && (
-          <div
+          <img
+            src={imageUrl(
+              form.image
+            )}
+            alt="Preview"
             style={{
+              width: "180px",
+              height: "220px",
+              objectFit:
+                "cover",
               marginTop:
                 "15px",
-              marginBottom:
-                "15px",
             }}
-          >
-            <p>
-              Pré-visualização:
-            </p>
-
-            <img
-              src={imageUrl(
-                form.image
-              )}
-              alt={
-                form.name ||
-                "Foto da peça"
-              }
-              style={{
-                width: "180px",
-                height:
-                  "230px",
-                objectFit:
-                  "cover",
-                borderRadius:
-                  "10px",
-                display:
-                  "block",
-              }}
-              onError={(event) => {
-                console.error(
-                  "Erro ao carregar imagem:",
-                  form.image
-                );
-
-                event.currentTarget.style.display =
-                  "none";
-              }}
-            />
-          </div>
+          />
         )}
 
-        <button
-          type="submit"
-          className="btn"
-        >
-          {editingId
-            ? "Atualizar peça"
-            : "Cadastrar peça"}
+        <button className="btn">
+          Salvar peça
         </button>
 
         {editingId && (
           <button
             type="button"
             onClick={
-              clearForm
+              resetForm
             }
           >
-            Cancelar edição
+            Cancelar
           </button>
         )}
       </form>
-
-      {/* =========================
-          MENSAGEM
-      ========================= */}
 
       {message && (
         <p className="notice">
@@ -1483,191 +1364,109 @@ function Admin() {
         </p>
       )}
 
-      {/* =========================
-          PRODUTOS
-      ========================= */}
+      <h2>
+        Peças cadastradas
+      </h2>
 
-      <section>
-        <h2>
-          Peças cadastradas
-        </h2>
-
-        <div className="adminlist">
-          {products.map(
-            (product) => (
-              <div
-                key={
-                  product.id
-                }
-                style={{
-                  display:
-                    "flex",
-                  alignItems:
-                    "center",
-                  gap: "15px",
-                  marginBottom:
-                    "15px",
-                }}
-              >
-                {product.image ? (
-                  <img
-                    src={imageUrl(
-                      product.image
-                    )}
-                    alt={
-                      product.name
-                    }
-                    style={{
-                      width:
-                        "70px",
-                      height:
-                        "90px",
-                      objectFit:
-                        "cover",
-                      borderRadius:
-                        "8px",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width:
-                        "70px",
-                      height:
-                        "90px",
-                      display:
-                        "flex",
-                      alignItems:
-                        "center",
-                      justifyContent:
-                        "center",
-                      background:
-                        "#eeeeee",
-                      borderRadius:
-                        "8px",
-                      fontSize:
-                        "11px",
-                    }}
-                  >
-                    Sem foto
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    flex: 1,
-                  }}
-                >
-                  <b>
-                    {
-                      product.name
-                    }
-                  </b>
-
-                  <span
-                    style={{
-                      display:
-                        "block",
-                    }}
-                  >
-                    {money(
-                      product.price
-                    )}
-
-                    {" · "}
-
-                    estoque{" "}
-                    {
-                      product.stock
-                    }
-                  </span>
-                </div>
-
-                <button
-                  onClick={() =>
-                    editProduct(
-                      product
-                    )
-                  }
-                >
-                  Editar
-                </button>
-
-                <button
-                  onClick={() =>
-                    deleteProduct(
-                      product.id
-                    )
-                  }
-                >
-                  Excluir
-                </button>
-              </div>
-            )
-          )}
-        </div>
-      </section>
-
-      {/* =========================
-          PEDIDOS
-      ========================= */}
-
-      <section>
-        <h2>
-          Pedidos
-        </h2>
-
-        <div className="adminlist">
-          {orders.map(
-            (order) => (
-              <div
-                key={
-                  order.id
-                }
-              >
-                <b>
-                  Pedido #
-                  {
-                    order.id
-                  }
-                </b>
-
-                <span>
-                  {
-                    order.customer_name
-                  }
-
-                  {" · "}
-
-                  {money(
-                    order.total
+      <div className="adminlist">
+        {products.map(
+          (product) => (
+            <div
+              key={
+                product.id
+              }
+            >
+              {product.image && (
+                <img
+                  src={imageUrl(
+                    product.image
                   )}
-
-                  {" · "}
-
-                  {
-                    order.payment_status
+                  alt={
+                    product.name
                   }
-                </span>
-              </div>
-            )
-          )}
+                  style={{
+                    width:
+                      "70px",
+                    height:
+                      "90px",
+                    objectFit:
+                      "cover",
+                  }}
+                />
+              )}
 
-          {!orders.length && (
-            <p>
-              Nenhum pedido
-              ainda.
-            </p>
-          )}
-        </div>
-      </section>
+              <b>
+                {
+                  product.name
+                }
+              </b>
+
+              <span>
+                {money(
+                  product.price
+                )}
+                {" · "}
+                estoque{" "}
+                {
+                  product.stock
+                }
+              </span>
+
+              <button
+                onClick={() =>
+                  editProduct(
+                    product
+                  )
+                }
+              >
+                Editar
+              </button>
+
+              <button
+                onClick={() =>
+                  deleteProduct(
+                    product.id
+                  )
+                }
+              >
+                Excluir
+              </button>
+            </div>
+          )
+        )}
+      </div>
+
+      <h2>
+        Pedidos
+      </h2>
+
+      <div className="adminlist">
+        {orders.map(
+          (order) => (
+            <div
+              key={order.id}
+            >
+              <b>
+                Pedido #
+                {order.id}
+              </b>
+
+              <span>
+                {
+                  order.customer_name
+                }
+                {" · "}
+                {money(
+                  order.total
+                )}
+              </span>
+            </div>
+          )
+        )}
+      </div>
     </main>
   );
 }
-
-/* =========================
-   INICIALIZAÇÃO
-========================= */
 
 createRoot(
   document.getElementById(
