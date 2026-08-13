@@ -72,10 +72,7 @@ const imageUrl = (image) => {
   return API_URL + image;
 };
 
-const api = async (
-  url,
-  options = {}
-) => {
+const api = async (url, options = {}) => {
   const finalUrl =
     url.startsWith("http")
       ? url
@@ -111,9 +108,7 @@ function App() {
     useState(() => {
       try {
         return JSON.parse(
-          localStorage.getItem(
-            "cart"
-          ) || "[]"
+          localStorage.getItem("cart") || "[]"
         );
       } catch {
         return [];
@@ -149,8 +144,7 @@ function App() {
         updated[index] = {
           ...updated[index],
           quantity:
-            updated[index]
-              .quantity + 1,
+            updated[index].quantity + 1,
         };
 
         return updated;
@@ -162,8 +156,7 @@ function App() {
           id: product.id,
           name: product.name,
           price: product.price,
-          image:
-            product.image || "",
+          image: product.image || "",
           size,
           color,
           quantity: 1,
@@ -172,9 +165,7 @@ function App() {
     });
   };
 
-  const removeFromCart = (
-    index
-  ) => {
+  const removeFromCart = (index) => {
     setCart((currentCart) =>
       currentCart.filter(
         (_, i) => i !== index
@@ -201,8 +192,7 @@ function App() {
             Carrinho (
             {cart.reduce(
               (total, item) =>
-                total +
-                item.quantity,
+                total + item.quantity,
               0
             )}
             )
@@ -224,9 +214,7 @@ function App() {
           path="/produto/:id"
           element={
             <ProductPage
-              addToCart={
-                addToCart
-              }
+              addToCart={addToCart}
             />
           }
         />
@@ -236,9 +224,7 @@ function App() {
           element={
             <Cart
               cart={cart}
-              removeFromCart={
-                removeFromCart
-              }
+              removeFromCart={removeFromCart}
             />
           }
         />
@@ -248,7 +234,6 @@ function App() {
           element={
             <Checkout
               cart={cart}
-              setCart={setCart}
             />
           }
         />
@@ -337,18 +322,14 @@ function Home() {
             (product) => (
               <article
                 className="card"
-                key={
-                  product.id
-                }
+                key={product.id}
               >
                 {product.image ? (
                   <img
                     src={imageUrl(
                       product.image
                     )}
-                    alt={
-                      product.name
-                    }
+                    alt={product.name}
                   />
                 ) : (
                   <div className="placeholder">
@@ -358,15 +339,11 @@ function Home() {
 
                 <div className="cardbody">
                   <h3>
-                    {
-                      product.name
-                    }
+                    {product.name}
                   </h3>
 
                   <p>
-                    {
-                      product.description
-                    }
+                    {product.description}
                   </p>
 
                   <strong>
@@ -425,6 +402,9 @@ function Product({
   const [color, setColor] =
     useState("");
 
+  const [message, setMessage] =
+    useState("");
+
   useEffect(() => {
     api("/api/products")
       .then((data) => {
@@ -455,6 +435,18 @@ function Product({
     );
   }
 
+  const handleAdd = () => {
+    addToCart(
+      product,
+      size,
+      color
+    );
+
+    setMessage(
+      "Produto adicionado ao carrinho!"
+    );
+  };
+
   return (
     <main className="section product">
       <div>
@@ -463,9 +455,7 @@ function Product({
             src={imageUrl(
               product.image
             )}
-            alt={
-              product.name
-            }
+            alt={product.name}
           />
         ) : (
           <div className="placeholder big">
@@ -486,9 +476,7 @@ function Product({
         </h2>
 
         <p>
-          {
-            product.description
-          }
+          {product.description}
         </p>
 
         {product.sizes && (
@@ -501,8 +489,7 @@ function Product({
               value={size}
               onChange={(event) =>
                 setSize(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
             >
@@ -534,8 +521,7 @@ function Product({
               value={color}
               onChange={(event) =>
                 setColor(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
             >
@@ -559,16 +545,16 @@ function Product({
 
         <button
           className="btn full"
-          onClick={() =>
-            addToCart(
-              product,
-              size,
-              color
-            )
-          }
+          onClick={handleAdd}
         >
           Adicionar ao carrinho
         </button>
+
+        {message && (
+          <p className="notice">
+            {message}
+          </p>
+        )}
       </div>
     </main>
   );
@@ -612,9 +598,7 @@ function Cart({
                 >
                   <div>
                     <b>
-                      {
-                        item.name
-                      }
+                      {item.name}
                     </b>
 
                     <small>
@@ -626,10 +610,7 @@ function Cart({
 
                       {" · "}
 
-                      {
-                        item.quantity
-                      }
-                      x
+                      {item.quantity}x
                     </small>
                   </div>
 
@@ -677,7 +658,6 @@ function Cart({
 
 function Checkout({
   cart,
-  setCart,
 }) {
   const [form, setForm] =
     useState({
@@ -689,6 +669,12 @@ function Checkout({
 
   const [message, setMessage] =
     useState("");
+
+  const [orderId, setOrderId] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(false);
 
   const total =
     cart.reduce(
@@ -702,6 +688,12 @@ function Checkout({
   const submit =
     async (event) => {
       event.preventDefault();
+
+      setLoading(true);
+
+      setMessage(
+        "Criando pedido..."
+      );
 
       try {
         const data =
@@ -726,24 +718,25 @@ function Checkout({
             }
           );
 
-        if (
-          data.paymentUrl
-        ) {
-          window.location.href =
-            data.paymentUrl;
-
-          return;
-        }
-
-        setMessage(
-          `Pedido #${data.orderId} criado.`
+        setOrderId(
+          data.orderId
         );
 
-        setCart([]);
+        setMessage(
+          `Pedido #${data.orderId} criado. Agora vamos escolher entrega e pagamento.`
+        );
+
+        /*
+          IMPORTANTE:
+          O carrinho NÃO é apagado aqui.
+        */
+
       } catch (error) {
         setMessage(
           error.message
         );
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -754,8 +747,11 @@ function Checkout({
           Carrinho vazio
         </h1>
 
-        <Link to="/">
-          Voltar
+        <Link
+          className="btn"
+          to="/"
+        >
+          Voltar para a loja
         </Link>
       </main>
     );
@@ -768,72 +764,96 @@ function Checkout({
           Finalizar compra
         </h1>
 
-        <form
-          onSubmit={submit}
-        >
-          <input
-            required
-            placeholder="Nome completo"
-            value={form.name}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                name:
-                  e.target.value,
-              })
-            }
-          />
+        {!orderId ? (
+          <form
+            onSubmit={submit}
+          >
+            <input
+              required
+              placeholder="Nome completo"
+              value={form.name}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  name:
+                    e.target.value,
+                })
+              }
+            />
 
-          <input
-            required
-            type="email"
-            placeholder="E-mail"
-            value={
-              form.email
-            }
-            onChange={(e) =>
-              setForm({
-                ...form,
-                email:
-                  e.target.value,
-              })
-            }
-          />
+            <input
+              required
+              type="email"
+              placeholder="E-mail"
+              value={
+                form.email
+              }
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  email:
+                    e.target.value,
+                })
+              }
+            />
 
-          <input
-            placeholder="Telefone"
-            value={
-              form.phone
-            }
-            onChange={(e) =>
-              setForm({
-                ...form,
-                phone:
-                  e.target.value,
-              })
-            }
-          />
+            <input
+              placeholder="Telefone"
+              value={
+                form.phone
+              }
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  phone:
+                    e.target.value,
+                })
+              }
+            />
 
-          <input
-            required
-            placeholder="Endereço completo"
-            value={
-              form.address
-            }
-            onChange={(e) =>
-              setForm({
-                ...form,
-                address:
-                  e.target.value,
-              })
-            }
-          />
+            <input
+              required
+              placeholder="Endereço completo"
+              value={
+                form.address
+              }
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  address:
+                    e.target.value,
+                })
+              }
+            />
 
-          <button className="btn full">
-            Finalizar pedido ·{" "}
-            {money(total)}
-          </button>
-        </form>
+            <button
+              className="btn full"
+              disabled={loading}
+            >
+              {loading
+                ? "Criando pedido..."
+                : `Continuar · ${money(total)}`}
+            </button>
+          </form>
+        ) : (
+          <div className="panel">
+            <h2>
+              Pedido #{orderId}
+            </h2>
+
+            <p>
+              Seus produtos continuam
+              no carrinho.
+            </p>
+
+            <p>
+              O próximo passo será
+              escolher a forma de
+              entrega e depois o
+              pagamento.
+            </p>
+          </div>
+        )}
 
         {message && (
           <p className="notice">
