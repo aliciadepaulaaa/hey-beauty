@@ -24,12 +24,10 @@ require("dotenv").config({
   ),
 });
 
-const app =
-  express();
+const app = express();
 
 const PORT =
-  process.env.PORT ||
-  3000;
+  process.env.PORT || 3000;
 
 const root =
   path.join(
@@ -49,6 +47,25 @@ const data =
     "data"
   );
 
+const productsFile =
+  path.join(
+    data,
+    "products.json"
+  );
+
+const ordersFile =
+  path.join(
+    data,
+    "orders.json"
+  );
+
+const LOCAL_SHIPPING =
+  1500;
+
+/* =========================
+   PASTAS
+========================= */
+
 fs.mkdirSync(
   uploads,
   {
@@ -62,18 +79,6 @@ fs.mkdirSync(
     recursive: true,
   }
 );
-
-const productsFile =
-  path.join(
-    data,
-    "products.json"
-  );
-
-const ordersFile =
-  path.join(
-    data,
-    "orders.json"
-  );
 
 if (
   !fs.existsSync(
@@ -97,6 +102,10 @@ if (
   );
 }
 
+/* =========================
+   ARQUIVOS JSON
+========================= */
+
 const read = (file) =>
   JSON.parse(
     fs.readFileSync(
@@ -118,6 +127,10 @@ const write = (
     )
   );
 
+/* =========================
+   MIDDLEWARE
+========================= */
+
 app.use(cors());
 
 app.use(express.json());
@@ -130,7 +143,7 @@ app.use(
 );
 
 /* =========================
-   LOGIN ADMIN
+   ADMIN
 ========================= */
 
 function auth(
@@ -161,28 +174,26 @@ function auth(
       "base64"
     ).toString();
 
-  const separatorIndex =
+  const separator =
     decoded.indexOf(":");
 
   const user =
     decoded.slice(
       0,
-      separatorIndex
+      separator
     );
 
   const password =
     decoded.slice(
-      separatorIndex + 1
+      separator + 1
     );
 
   const adminUser =
-    process.env
-      .ADMIN_USER ||
+    process.env.ADMIN_USER ||
     "admin";
 
   const adminPassword =
-    process.env
-      .ADMIN_PASSWORD ||
+    process.env.ADMIN_PASSWORD ||
     "troque-esta-senha";
 
   if (
@@ -210,17 +221,18 @@ const upload =
     storage:
       multer.diskStorage({
         destination: (
-          _,
-          __,
+          req,
+          file,
           callback
-        ) =>
+        ) => {
           callback(
             null,
             uploads
-          ),
+          );
+        },
 
         filename: (
-          _,
+          req,
           file,
           callback
         ) => {
@@ -238,7 +250,7 @@ const upload =
   });
 
 /* =========================
-   PRODUTOS
+   PRODUTOS PÚBLICOS
 ========================= */
 
 app.get(
@@ -258,6 +270,10 @@ app.get(
   }
 );
 
+/* =========================
+   PRODUTOS ADMIN
+========================= */
+
 app.get(
   "/api/admin/products",
   auth,
@@ -271,7 +287,7 @@ app.get(
 );
 
 /* =========================
-   UPLOAD FOTO
+   UPLOAD DE IMAGEM
 ========================= */
 
 app.post(
@@ -299,7 +315,7 @@ app.post(
 );
 
 /* =========================
-   CADASTRAR
+   CADASTRAR PRODUTO
 ========================= */
 
 app.post(
@@ -324,7 +340,7 @@ app.post(
           ) + 1
         : 1;
 
-    const newProduct = {
+    products.unshift({
       id,
 
       ...body,
@@ -345,11 +361,7 @@ app.post(
         body.active
           ? 1
           : 0,
-    };
-
-    products.unshift(
-      newProduct
-    );
+    });
 
     write(
       productsFile,
@@ -363,7 +375,7 @@ app.post(
 );
 
 /* =========================
-   EDITAR
+   EDITAR PRODUTO
 ========================= */
 
 app.put(
@@ -426,7 +438,7 @@ app.put(
 );
 
 /* =========================
-   EXCLUIR
+   EXCLUIR PRODUTO
 ========================= */
 
 app.delete(
@@ -438,16 +450,14 @@ app.delete(
         productsFile
       );
 
-    const filtered =
+    write(
+      productsFile,
+
       products.filter(
         (product) =>
           product.id !=
           req.params.id
-      );
-
-    write(
-      productsFile,
-      filtered
+      )
     );
 
     res.json({
@@ -457,7 +467,7 @@ app.delete(
 );
 
 /* =========================
-   PEDIDOS
+   PEDIDOS ADMIN
 ========================= */
 
 app.get(
@@ -482,6 +492,7 @@ app.post(
     const {
       customer,
       items,
+      delivery,
     } = req.body;
 
     if (
@@ -498,12 +509,32 @@ app.post(
         });
     }
 
+    const allowedDelivery =
+      [
+        "hey_beauty",
+        "customer_motoboy",
+        "national",
+      ];
+
+    if (
+      !allowedDelivery.includes(
+        delivery?.method
+      )
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Forma de entrega inválida",
+        });
+    }
+
     const products =
       read(
         productsFile
       );
 
-    let total = 0;
+    let subtotal = 0;
 
     const details = [];
 
@@ -537,7 +568,7 @@ app.post(
           });
       }
 
-      total +=
+      subtotal +=
         product.price *
         quantity;
 
@@ -561,6 +592,42 @@ app.post(
       });
     }
 
+    let shippingFee = 0;
+
+    let shippingStatus =
+      "calculated";
+
+    if (
+      delivery.method ===
+      "hey_beauty"
+    ) {
+      shippingFee =
+        LOCAL_SHIPPING;
+    }
+
+    if (
+      delivery.method ===
+      "customer_motoboy"
+    ) {
+      shippingFee = 0;
+    }
+
+    if (
+      delivery.method ===
+      "national"
+    ) {
+      shippingFee = null;
+
+      shippingStatus =
+        "pending_quote";
+    }
+
+    const total =
+      shippingFee === null
+        ? null
+        : subtotal +
+          shippingFee;
+
     const orders =
       read(
         ordersFile
@@ -576,7 +643,7 @@ app.post(
           ) + 1
         : 1;
 
-    orders.push({
+    const order = {
       id,
 
       customer_name:
@@ -589,13 +656,56 @@ app.post(
         customer.phone ||
         "",
 
+      cep:
+        customer.cep ||
+        "",
+
+      street:
+        customer.street ||
+        "",
+
+      number:
+        customer.number ||
+        "",
+
+      complement:
+        customer.complement ||
+        "",
+
+      neighborhood:
+        customer.neighborhood ||
+        "",
+
+      city:
+        customer.city ||
+        "",
+
+      state:
+        customer.state ||
+        "",
+
+      reference:
+        customer.reference ||
+        "",
+
       address:
         customer.address,
 
-      items:
-        details,
+      delivery_method:
+        delivery.method,
+
+      shipping_fee:
+        shippingFee,
+
+      shipping_status:
+        shippingStatus,
+
+      subtotal,
 
       total,
+
+      items:
+        details,
 
       payment_status:
         "pending",
@@ -603,7 +713,9 @@ app.post(
       created_at:
         new Date()
           .toISOString(),
-    });
+    };
+
+    orders.push(order);
 
     write(
       ordersFile,
@@ -613,17 +725,25 @@ app.post(
     res.json({
       orderId: id,
 
-      paymentMode:
-        "demo",
+      subtotal,
 
-      message:
-        "Pedido criado.",
+      shippingFee,
+
+      shippingStatus,
+
+      total,
+
+      deliveryMethod:
+        delivery.method,
+
+      paymentMode:
+        "pending",
     });
   }
 );
 
 /* =========================
-   FRONTEND PRODUÇÃO
+   FRONTEND
 ========================= */
 
 const clientDist =
@@ -640,7 +760,7 @@ app.use(
 );
 
 app.get(
-  "*splat",
+  "/{*splat}",
   (req, res) => {
     res.sendFile(
       path.join(

@@ -10,18 +10,20 @@ import {
 
 import "./style.css";
 
-/* =========================
-   CONFIGURAÇÃO DA API
-========================= */
+/* =========================================================
+   CONFIGURAÇÃO
+========================================================= */
 
 const API_URL =
   window.location.hostname === "localhost"
     ? "http://localhost:3000"
     : "";
 
-/* =========================
-   FUNÇÕES AUXILIARES
-========================= */
+const LOCAL_SHIPPING = 1500;
+
+/* =========================================================
+   FUNÇÕES
+========================================================= */
 
 const money = (value) =>
   (Number(value || 0) / 100).toLocaleString("pt-BR", {
@@ -30,37 +32,27 @@ const money = (value) =>
   });
 
 const parsePrice = (value) => {
-  if (typeof value === "number") {
-    return value;
-  }
+  if (typeof value === "number") return value;
 
   let text = String(value ?? "").trim();
 
-  if (!text) {
-    return 0;
-  }
+  if (!text) return 0;
 
   text = text.replace(/\s/g, "");
 
   if (text.includes(",") && text.includes(".")) {
-    text = text
-      .replace(/\./g, "")
-      .replace(",", ".");
+    text = text.replace(/\./g, "").replace(",", ".");
   } else {
     text = text.replace(",", ".");
   }
 
   const number = Number(text);
 
-  return Number.isFinite(number)
-    ? number
-    : 0;
+  return Number.isFinite(number) ? number : 0;
 };
 
 const imageUrl = (image) => {
-  if (!image) {
-    return "";
-  }
+  if (!image) return "";
 
   if (
     image.startsWith("http://") ||
@@ -78,42 +70,33 @@ const api = async (url, options = {}) => {
       ? url
       : API_URL + url;
 
-  const response =
-    await fetch(
-      finalUrl,
-      options
-    );
+  const response = await fetch(finalUrl, options);
 
-  const data =
-    await response
-      .json()
-      .catch(() => ({}));
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
-      data.error ||
-      "Ocorreu um erro."
+      data.error || "Ocorreu um erro."
     );
   }
 
   return data;
 };
 
-/* =========================
+/* =========================================================
    APP
-========================= */
+========================================================= */
 
 function App() {
-  const [cart, setCart] =
-    useState(() => {
-      try {
-        return JSON.parse(
-          localStorage.getItem("cart") || "[]"
-        );
-      } catch {
-        return [];
-      }
-    });
+  const [cart, setCart] = useState(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem("cart") || "[]"
+      );
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem(
@@ -128,18 +111,15 @@ function App() {
     color = ""
   ) => {
     setCart((currentCart) => {
-      const index =
-        currentCart.findIndex(
-          (item) =>
-            item.id === product.id &&
-            item.size === size &&
-            item.color === color
-        );
+      const index = currentCart.findIndex(
+        (item) =>
+          item.id === product.id &&
+          item.size === size &&
+          item.color === color
+      );
 
       if (index >= 0) {
-        const updated = [
-          ...currentCart,
-        ];
+        const updated = [...currentCart];
 
         updated[index] = {
           ...updated[index],
@@ -176,10 +156,7 @@ function App() {
   return (
     <>
       <header>
-        <Link
-          className="brand"
-          to="/"
-        >
+        <Link className="brand" to="/">
           HEY BEAUTY
         </Link>
 
@@ -232,9 +209,7 @@ function App() {
         <Route
           path="/checkout"
           element={
-            <Checkout
-              cart={cart}
-            />
+            <Checkout cart={cart} />
           }
         />
 
@@ -247,16 +222,13 @@ function App() {
   );
 }
 
-/* =========================
+/* =========================================================
    HOME
-========================= */
+========================================================= */
 
 function Home() {
-  const [products, setProducts] =
-    useState([]);
-
-  const [error, setError] =
-    useState("");
+  const [products, setProducts] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api("/api/products")
@@ -269,10 +241,7 @@ function Home() {
       })
       .catch((error) => {
         console.error(error);
-
-        setError(
-          error.message
-        );
+        setError(error.message);
       });
   }, []);
 
@@ -280,18 +249,15 @@ function Home() {
     <main>
       <section className="hero">
         <div>
-          <span>
-            HEY BEAUTY
-          </span>
+          <span>HEY BEAUTY</span>
 
           <h1>
             Seu estilo começa aqui.
           </h1>
 
           <p>
-            Escolha suas peças
-            favoritas e encontre
-            seu próximo look.
+            Escolha suas peças favoritas e
+            encontre seu próximo look.
           </p>
 
           <a
@@ -307,9 +273,7 @@ function Home() {
         id="produtos"
         className="section"
       >
-        <h2>
-          Nossos produtos
-        </h2>
+        <h2>Nossos produtos</h2>
 
         {error && (
           <p className="notice">
@@ -318,68 +282,56 @@ function Home() {
         )}
 
         <div className="grid">
-          {products.map(
-            (product) => (
-              <article
-                className="card"
-                key={product.id}
-              >
-                {product.image ? (
-                  <img
-                    src={imageUrl(
-                      product.image
-                    )}
-                    alt={product.name}
-                  />
-                ) : (
-                  <div className="placeholder">
-                    FOTO DA PEÇA
-                  </div>
-                )}
-
-                <div className="cardbody">
-                  <h3>
-                    {product.name}
-                  </h3>
-
-                  <p>
-                    {product.description}
-                  </p>
-
-                  <strong>
-                    {money(
-                      product.price
-                    )}
-                  </strong>
-
-                  <Link
-                    className="btn full"
-                    to={
-                      "/produto/" +
-                      product.id
-                    }
-                  >
-                    Ver detalhes
-                  </Link>
+          {products.map((product) => (
+            <article
+              className="card"
+              key={product.id}
+            >
+              {product.image ? (
+                <img
+                  src={imageUrl(product.image)}
+                  alt={product.name}
+                />
+              ) : (
+                <div className="placeholder">
+                  FOTO DA PEÇA
                 </div>
-              </article>
-            )
-          )}
+              )}
+
+              <div className="cardbody">
+                <h3>
+                  {product.name}
+                </h3>
+
+                <p>
+                  {product.description}
+                </p>
+
+                <strong>
+                  {money(product.price)}
+                </strong>
+
+                <Link
+                  className="btn full"
+                  to={`/produto/${product.id}`}
+                >
+                  Ver detalhes
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </main>
   );
 }
 
-/* =========================
+/* =========================================================
    PRODUTO
-========================= */
+========================================================= */
 
-function ProductPage({
-  addToCart,
-}) {
-  const { id } =
-    useParams();
+function ProductPage({ addToCart }) {
+  const { id } = useParams();
 
   return (
     <Product
@@ -408,21 +360,13 @@ function Product({
   useEffect(() => {
     api("/api/products")
       .then((data) => {
-        if (
-          !Array.isArray(data)
-        ) {
-          return;
-        }
+        if (!Array.isArray(data)) return;
 
-        const found =
-          data.find(
-            (item) =>
-              item.id == id
-          );
-
-        setProduct(
-          found || null
+        const found = data.find(
+          (item) => item.id == id
         );
+
+        setProduct(found || null);
       })
       .catch(console.error);
   }, [id]);
@@ -435,7 +379,21 @@ function Product({
     );
   }
 
-  const handleAdd = () => {
+  const add = () => {
+    if (product.sizes && !size) {
+      setMessage(
+        "Selecione o tamanho."
+      );
+      return;
+    }
+
+    if (product.colors && !color) {
+      setMessage(
+        "Selecione a cor."
+      );
+      return;
+    }
+
     addToCart(
       product,
       size,
@@ -452,9 +410,7 @@ function Product({
       <div>
         {product.image ? (
           <img
-            src={imageUrl(
-              product.image
-            )}
+            src={imageUrl(product.image)}
             alt={product.name}
           />
         ) : (
@@ -470,9 +426,7 @@ function Product({
         </h1>
 
         <h2>
-          {money(
-            product.price
-          )}
+          {money(product.price)}
         </h2>
 
         <p>
@@ -487,10 +441,8 @@ function Product({
 
             <select
               value={size}
-              onChange={(event) =>
-                setSize(
-                  event.target.value
-                )
+              onChange={(e) =>
+                setSize(e.target.value)
               }
             >
               <option value="">
@@ -519,10 +471,8 @@ function Product({
 
             <select
               value={color}
-              onChange={(event) =>
-                setColor(
-                  event.target.value
-                )
+              onChange={(e) =>
+                setColor(e.target.value)
               }
             >
               <option value="">
@@ -545,7 +495,7 @@ function Product({
 
         <button
           className="btn full"
-          onClick={handleAdd}
+          onClick={add}
         >
           Adicionar ao carrinho
         </button>
@@ -560,22 +510,20 @@ function Product({
   );
 }
 
-/* =========================
+/* =========================================================
    CARRINHO
-========================= */
+========================================================= */
 
 function Cart({
   cart,
   removeFromCart,
 }) {
-  const total =
-    cart.reduce(
-      (sum, item) =>
-        sum +
-        item.price *
-          item.quantity,
-      0
-    );
+  const total = cart.reduce(
+    (sum, item) =>
+      sum +
+      item.price * item.quantity,
+    0
+  );
 
   return (
     <main className="section">
@@ -623,9 +571,7 @@ function Cart({
 
                   <button
                     onClick={() =>
-                      removeFromCart(
-                        index
-                      )
+                      removeFromCart(index)
                     }
                   >
                     Excluir
@@ -636,15 +582,14 @@ function Cart({
           </div>
 
           <div className="total">
-            Total:{" "}
-            {money(total)}
+            Total: {money(total)}
           </div>
 
           <Link
             className="btn"
             to="/checkout"
           >
-            Finalizar compra
+            Continuar para entrega
           </Link>
         </>
       )}
@@ -652,19 +597,27 @@ function Cart({
   );
 }
 
-/* =========================
+/* =========================================================
    CHECKOUT
-========================= */
+========================================================= */
 
-function Checkout({
-  cart,
-}) {
+function Checkout({ cart }) {
   const [form, setForm] =
     useState({
       name: "",
       email: "",
       phone: "",
-      address: "",
+
+      cep: "",
+      street: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      reference: "",
+
+      deliveryMethod: "",
     });
 
   const [message, setMessage] =
@@ -676,18 +629,47 @@ function Checkout({
   const [loading, setLoading] =
     useState(false);
 
+  const subtotal = cart.reduce(
+    (sum, item) =>
+      sum +
+      item.price * item.quantity,
+    0
+  );
+
+  const shipping =
+    form.deliveryMethod ===
+    "hey_beauty"
+      ? LOCAL_SHIPPING
+      : 0;
+
+  const nationalShippingPending =
+    form.deliveryMethod ===
+    "national";
+
   const total =
-    cart.reduce(
-      (sum, item) =>
-        sum +
-        item.price *
-          item.quantity,
-      0
-    );
+    subtotal + shipping;
+
+  const updateField = (
+    field,
+    value
+  ) => {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
 
   const submit =
     async (event) => {
       event.preventDefault();
+
+      if (!form.deliveryMethod) {
+        setMessage(
+          "Escolha a forma de entrega."
+        );
+
+        return;
+      }
 
       setLoading(true);
 
@@ -695,13 +677,26 @@ function Checkout({
         "Criando pedido..."
       );
 
+      const completeAddress = [
+        form.street,
+        form.number &&
+          `nº ${form.number}`,
+        form.complement,
+        form.neighborhood,
+        form.city,
+        form.state,
+        form.cep &&
+          `CEP ${form.cep}`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+
       try {
         const data =
           await api(
             "/api/checkout",
             {
-              method:
-                "POST",
+              method: "POST",
 
               headers: {
                 "Content-Type":
@@ -710,10 +705,55 @@ function Checkout({
 
               body:
                 JSON.stringify({
-                  customer:
-                    form,
-                  items:
-                    cart,
+                  customer: {
+                    name:
+                      form.name,
+
+                    email:
+                      form.email,
+
+                    phone:
+                      form.phone,
+
+                    address:
+                      completeAddress,
+
+                    cep:
+                      form.cep,
+
+                    street:
+                      form.street,
+
+                    number:
+                      form.number,
+
+                    complement:
+                      form.complement,
+
+                    neighborhood:
+                      form.neighborhood,
+
+                    city:
+                      form.city,
+
+                    state:
+                      form.state,
+
+                    reference:
+                      form.reference,
+                  },
+
+                  delivery: {
+                    method:
+                      form.deliveryMethod,
+
+                    shipping:
+                      nationalShippingPending
+                        ? null
+                        : shipping,
+                  },
+
+                  items: cart,
                 }),
             }
           );
@@ -722,15 +762,18 @@ function Checkout({
           data.orderId
         );
 
-        setMessage(
-          `Pedido #${data.orderId} criado. Agora vamos escolher entrega e pagamento.`
-        );
-
-        /*
-          IMPORTANTE:
-          O carrinho NÃO é apagado aqui.
-        */
-
+        if (
+          form.deliveryMethod ===
+          "national"
+        ) {
+          setMessage(
+            `Pedido #${data.orderId} criado. O frete para seu CEP será calculado antes do pagamento.`
+          );
+        } else {
+          setMessage(
+            `Pedido #${data.orderId} criado com sucesso.`
+          );
+        }
       } catch (error) {
         setMessage(
           error.message
@@ -761,23 +804,26 @@ function Checkout({
     <main className="section checkout">
       <div>
         <h1>
-          Finalizar compra
+          Entrega
         </h1>
 
         {!orderId ? (
           <form
             onSubmit={submit}
           >
+            <h3>
+              Dados pessoais
+            </h3>
+
             <input
               required
               placeholder="Nome completo"
               value={form.name}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  name:
-                    e.target.value,
-                })
+                updateField(
+                  "name",
+                  e.target.value
+                )
               }
             />
 
@@ -785,46 +831,283 @@ function Checkout({
               required
               type="email"
               placeholder="E-mail"
-              value={
-                form.email
-              }
+              value={form.email}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  email:
-                    e.target.value,
-                })
-              }
-            />
-
-            <input
-              placeholder="Telefone"
-              value={
-                form.phone
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  phone:
-                    e.target.value,
-                })
+                updateField(
+                  "email",
+                  e.target.value
+                )
               }
             />
 
             <input
               required
-              placeholder="Endereço completo"
-              value={
-                form.address
-              }
+              placeholder="Telefone / WhatsApp"
+              value={form.phone}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  address:
-                    e.target.value,
-                })
+                updateField(
+                  "phone",
+                  e.target.value
+                )
               }
             />
+
+            <h3>
+              Endereço
+            </h3>
+
+            <input
+              required
+              placeholder="CEP"
+              value={form.cep}
+              onChange={(e) =>
+                updateField(
+                  "cep",
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              required
+              placeholder="Rua / Avenida"
+              value={form.street}
+              onChange={(e) =>
+                updateField(
+                  "street",
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              required
+              placeholder="Número"
+              value={form.number}
+              onChange={(e) =>
+                updateField(
+                  "number",
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              placeholder="Complemento"
+              value={
+                form.complement
+              }
+              onChange={(e) =>
+                updateField(
+                  "complement",
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              required
+              placeholder="Bairro"
+              value={
+                form.neighborhood
+              }
+              onChange={(e) =>
+                updateField(
+                  "neighborhood",
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              required
+              placeholder="Cidade"
+              value={form.city}
+              onChange={(e) =>
+                updateField(
+                  "city",
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              required
+              placeholder="UF"
+              maxLength="2"
+              value={form.state}
+              onChange={(e) =>
+                updateField(
+                  "state",
+                  e.target.value
+                    .toUpperCase()
+                )
+              }
+            />
+
+            <input
+              placeholder="Ponto de referência"
+              value={
+                form.reference
+              }
+              onChange={(e) =>
+                updateField(
+                  "reference",
+                  e.target.value
+                )
+              }
+            />
+
+            <h3>
+              Como deseja receber?
+            </h3>
+
+            {/* MOTOBOY HEY BEAUTY */}
+
+            <label
+              style={{
+                display: "block",
+                padding: "18px",
+                border:
+                  "1px solid #ddd",
+                marginBottom:
+                  "12px",
+                cursor:
+                  "pointer",
+              }}
+            >
+              <input
+                type="radio"
+                name="delivery"
+                value="hey_beauty"
+                checked={
+                  form.deliveryMethod ===
+                  "hey_beauty"
+                }
+                onChange={(e) =>
+                  updateField(
+                    "deliveryMethod",
+                    e.target.value
+                  )
+                }
+              />
+
+              {" "}
+
+              <strong>
+                Motoboy Hey Beauty —
+                R$ 15,00
+              </strong>
+
+              <p
+                style={{
+                  marginBottom: 0,
+                }}
+              >
+                Entregas de segunda
+                a sábado.
+                Rotas organizadas
+                até às 15h.
+              </p>
+            </label>
+
+            {/* MOTOBOY CLIENTE */}
+
+            <label
+              style={{
+                display: "block",
+                padding: "18px",
+                border:
+                  "1px solid #ddd",
+                marginBottom:
+                  "12px",
+                cursor:
+                  "pointer",
+              }}
+            >
+              <input
+                type="radio"
+                name="delivery"
+                value="customer_motoboy"
+                checked={
+                  form.deliveryMethod ===
+                  "customer_motoboy"
+                }
+                onChange={(e) =>
+                  updateField(
+                    "deliveryMethod",
+                    e.target.value
+                  )
+                }
+              />
+
+              {" "}
+
+              <strong>
+                Vou solicitar meu
+                próprio motoboy
+              </strong>
+
+              <p
+                style={{
+                  marginBottom: 0,
+                }}
+              >
+                Nenhuma taxa de
+                entrega será cobrada
+                pela Hey Beauty.
+                Você chama e paga
+                seu entregador.
+              </p>
+            </label>
+
+            {/* BRASIL */}
+
+            <label
+              style={{
+                display: "block",
+                padding: "18px",
+                border:
+                  "1px solid #ddd",
+                marginBottom:
+                  "20px",
+                cursor:
+                  "pointer",
+              }}
+            >
+              <input
+                type="radio"
+                name="delivery"
+                value="national"
+                checked={
+                  form.deliveryMethod ===
+                  "national"
+                }
+                onChange={(e) =>
+                  updateField(
+                    "deliveryMethod",
+                    e.target.value
+                  )
+                }
+              />
+
+              {" "}
+
+              <strong>
+                Envio para todo o
+                Brasil
+              </strong>
+
+              <p
+                style={{
+                  marginBottom: 0,
+                }}
+              >
+                O frete será calculado
+                de acordo com o CEP
+                de destino.
+              </p>
+            </label>
 
             <button
               className="btn full"
@@ -832,7 +1115,7 @@ function Checkout({
             >
               {loading
                 ? "Criando pedido..."
-                : `Continuar · ${money(total)}`}
+                : "Continuar"}
             </button>
           </form>
         ) : (
@@ -841,16 +1124,59 @@ function Checkout({
               Pedido #{orderId}
             </h2>
 
-            <p>
-              Seus produtos continuam
-              no carrinho.
-            </p>
+            {form.deliveryMethod ===
+            "hey_beauty" ? (
+              <>
+                <p>
+                  Entrega selecionada:
+                </p>
+
+                <strong>
+                  Motoboy Hey Beauty —
+                  R$ 15,00
+                </strong>
+
+                <p>
+                  Rotas de segunda a
+                  sábado, organizadas
+                  até às 15h.
+                </p>
+              </>
+            ) : form.deliveryMethod ===
+              "customer_motoboy" ? (
+              <>
+                <p>
+                  Entrega selecionada:
+                </p>
+
+                <strong>
+                  Motoboy solicitado
+                  pela cliente
+                </strong>
+              </>
+            ) : (
+              <>
+                <p>
+                  Envio nacional
+                  selecionado.
+                </p>
+
+                <strong>
+                  Frete pendente de
+                  cálculo
+                </strong>
+
+                <p>
+                  O valor será
+                  calculado pelo CEP
+                  antes do pagamento.
+                </p>
+              </>
+            )}
 
             <p>
               O próximo passo será
-              escolher a forma de
-              entrega e depois o
-              pagamento.
+              configurar o pagamento.
             </p>
           </div>
         )}
@@ -864,14 +1190,16 @@ function Checkout({
 
       <aside>
         <h3>
-          Resumo
+          Resumo do pedido
         </h3>
 
         {cart.map(
           (item, index) => (
             <p key={index}>
-              {item.quantity}x{" "}
-              {item.name}
+              <span>
+                {item.quantity}x{" "}
+                {item.name}
+              </span>
 
               <span>
                 {money(
@@ -885,20 +1213,61 @@ function Checkout({
 
         <hr />
 
-        <b>
-          Total{" "}
+        <p>
           <span>
-            {money(total)}
+            Subtotal
           </span>
-        </b>
+
+          <span>
+            {money(subtotal)}
+          </span>
+        </p>
+
+        <p>
+          <span>
+            Entrega
+          </span>
+
+          <span>
+            {form.deliveryMethod ===
+            "hey_beauty"
+              ? "R$ 15,00"
+              : form.deliveryMethod ===
+                "customer_motoboy"
+              ? "Por conta da cliente"
+              : form.deliveryMethod ===
+                "national"
+              ? "A calcular"
+              : "Selecione"}
+          </span>
+        </p>
+
+        <hr />
+
+        {!nationalShippingPending && (
+          <b>
+            <span>Total</span>
+
+            <span>
+              {money(total)}
+            </span>
+          </b>
+        )}
+
+        {nationalShippingPending && (
+          <b>
+            Total após cálculo
+            do frete
+          </b>
+        )}
       </aside>
     </main>
   );
 }
 
-/* =========================
+/* =========================================================
    ADMIN
-========================= */
+========================================================= */
 
 function Admin() {
   const [
@@ -1064,9 +1433,7 @@ function Admin() {
         event.target
           .files?.[0];
 
-      if (!file) {
-        return;
-      }
+      if (!file) return;
 
       const formData =
         new FormData();
@@ -1081,8 +1448,7 @@ function Admin() {
           await api(
             "/api/upload",
             {
-              method:
-                "POST",
+              method: "POST",
               headers:
                 headers(),
               body: formData,
@@ -1237,9 +1603,7 @@ function Admin() {
           Painel HEY BEAUTY
         </h1>
 
-        <button
-          onClick={logout}
-        >
+        <button onClick={logout}>
           Sair
         </button>
       </div>
@@ -1391,11 +1755,7 @@ function Admin() {
       <div className="adminlist">
         {products.map(
           (product) => (
-            <div
-              key={
-                product.id
-              }
-            >
+            <div key={product.id}>
               {product.image && (
                 <img
                   src={imageUrl(
@@ -1416,9 +1776,7 @@ function Admin() {
               )}
 
               <b>
-                {
-                  product.name
-                }
+                {product.name}
               </b>
 
               <span>
@@ -1427,9 +1785,7 @@ function Admin() {
                 )}
                 {" · "}
                 estoque{" "}
-                {
-                  product.stock
-                }
+                {product.stock}
               </span>
 
               <button
@@ -1463,22 +1819,20 @@ function Admin() {
       <div className="adminlist">
         {orders.map(
           (order) => (
-            <div
-              key={order.id}
-            >
+            <div key={order.id}>
               <b>
-                Pedido #
-                {order.id}
+                Pedido #{order.id}
               </b>
 
               <span>
-                {
-                  order.customer_name
-                }
+                {order.customer_name}
                 {" · "}
-                {money(
-                  order.total
-                )}
+
+                {order.total != null
+                  ? money(
+                      order.total
+                    )
+                  : "Frete pendente"}
               </span>
             </div>
           )
@@ -1488,10 +1842,12 @@ function Admin() {
   );
 }
 
+/* =========================================================
+   INICIAR
+========================================================= */
+
 createRoot(
-  document.getElementById(
-    "root"
-  )
+  document.getElementById("root")
 ).render(
   <BrowserRouter>
     <App />
