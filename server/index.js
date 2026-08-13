@@ -1,13 +1,666 @@
-const express=require('express');const cors=require('cors');const path=require('path');const fs=require('fs');const multer=require('multer');const crypto=require('crypto');require('dotenv').config({path:path.join(__dirname,'..','.env')});
-const app=express(),PORT=process.env.PORT||3000,root=path.join(__dirname,'..'),uploads=path.join(root,'uploads'),data=path.join(root,'data');fs.mkdirSync(uploads,{recursive:true});fs.mkdirSync(data,{recursive:true});
-const pf=path.join(data,'products.json'),of=path.join(data,'orders.json');if(!fs.existsSync(pf))fs.writeFileSync(pf,JSON.stringify([{id:1,name:'Vestido Midi',description:'Modelo elegante e confortável.',price:12990,stock:10,sizes:'P,M,G',colors:'Preto,Vermelho',image:'',active:1},{id:2,name:'Blusa Básica',description:'Blusa para o dia a dia.',price:5990,stock:15,sizes:'P,M,G,GG',colors:'Branco,Preto',image:'',active:1}],null,2));if(!fs.existsSync(of))fs.writeFileSync(of,'[]');
-const read=f=>JSON.parse(fs.readFileSync(f,'utf8')),write=(f,x)=>fs.writeFileSync(f,JSON.stringify(x,null,2));app.use(cors());app.use(express.json());app.use('/uploads',express.static(uploads));
-function auth(req,res,next){const h=req.headers.authorization||'';if(!h.startsWith('Basic '))return res.status(401).json({error:'Não autorizado'});const [u,p]=Buffer.from(h.slice(6),'base64').toString().split(':');if(u!==(process.env.ADMIN_USER||'admin')||p!==(process.env.ADMIN_PASSWORD||'troque-esta-senha'))return res.status(401).json({error:'Usuário ou senha inválidos'});next()}
-const upload=multer({storage:multer.diskStorage({destination:(_,__,cb)=>cb(null,uploads),filename:(_,f,cb)=>cb(null,crypto.randomUUID()+path.extname(f.originalname).toLowerCase())})});
-app.get('/api/products',(q,r)=>r.json(read(pf).filter(x=>x.active)));app.get('/api/admin/products',auth,(q,r)=>r.json(read(pf)));app.get('/api/orders',auth,(q,r)=>r.json(read(of).reverse()));
-app.post('/api/upload',auth,upload.single('image'),(q,r)=>r.json({image:'/uploads/'+q.file.filename}));
-app.post('/api/admin/products',auth,(q,r)=>{let a=read(pf),b=q.body,id=a.length?Math.max(...a.map(x=>x.id))+1:1;a.unshift({id,...b,price:Math.round(Number(b.price)*100),stock:Number(b.stock||0),active:b.active?1:0});write(pf,a);r.json({id})});
-app.put('/api/admin/products/:id',auth,(q,r)=>{let a=read(pf),i=a.findIndex(x=>x.id==q.params.id);if(i<0)return r.status(404).json({error:'Produto não encontrado'});a[i]={...a[i],...q.body,price:Math.round(Number(q.body.price)*100),stock:Number(q.body.stock||0),active:q.body.active?1:0};write(pf,a);r.json({ok:true})});
-app.delete('/api/admin/products/:id',auth,(q,r)=>{write(pf,read(pf).filter(x=>x.id!=q.params.id));r.json({ok:true})});
-app.post('/api/checkout',(q,r)=>{const {customer,items}=q.body;if(!customer?.name||!customer?.email||!customer?.address||!items?.length)return r.status(400).json({error:'Dados incompletos'});let ps=read(pf),total=0,detail=[];for(const i of items){let p=ps.find(x=>x.id==i.id&&x.active),qty=Number(i.quantity);if(!p||qty<1||qty>p.stock)return r.status(400).json({error:'Produto sem estoque ou inválido'});total+=p.price*qty;detail.push({id:p.id,name:p.name,quantity:qty,unit_price:p.price,size:i.size||'',color:i.color||''})}let os=read(of),id=os.length?Math.max(...os.map(x=>x.id))+1:1;os.push({id,customer_name:customer.name,email:customer.email,phone:customer.phone||'',address:customer.address,items:detail,total,payment_status:'pending',created_at:new Date().toISOString()});write(of,os);r.json({orderId:id,paymentMode:'demo',message:'Pedido criado. O pagamento real será conectado na próxima etapa.'})});
-app.use(express.static(path.join(root,'dist')));app.get('*splat',(q,r)=>r.sendFile(path.join(root,'dist','index.html')));app.listen(PORT,()=>console.log('Loja rodando em http://localhost:'+PORT));
+const express =
+  require("express");
+
+const cors =
+  require("cors");
+
+const path =
+  require("path");
+
+const fs =
+  require("fs");
+
+const multer =
+  require("multer");
+
+const crypto =
+  require("crypto");
+
+require("dotenv").config({
+  path: path.join(
+    __dirname,
+    "..",
+    ".env"
+  ),
+});
+
+const app =
+  express();
+
+const PORT =
+  process.env.PORT ||
+  3000;
+
+const root =
+  path.join(
+    __dirname,
+    ".."
+  );
+
+const uploads =
+  path.join(
+    root,
+    "uploads"
+  );
+
+const data =
+  path.join(
+    root,
+    "data"
+  );
+
+fs.mkdirSync(
+  uploads,
+  {
+    recursive: true,
+  }
+);
+
+fs.mkdirSync(
+  data,
+  {
+    recursive: true,
+  }
+);
+
+const productsFile =
+  path.join(
+    data,
+    "products.json"
+  );
+
+const ordersFile =
+  path.join(
+    data,
+    "orders.json"
+  );
+
+if (
+  !fs.existsSync(
+    productsFile
+  )
+) {
+  fs.writeFileSync(
+    productsFile,
+    "[]"
+  );
+}
+
+if (
+  !fs.existsSync(
+    ordersFile
+  )
+) {
+  fs.writeFileSync(
+    ordersFile,
+    "[]"
+  );
+}
+
+const read = (file) =>
+  JSON.parse(
+    fs.readFileSync(
+      file,
+      "utf8"
+    )
+  );
+
+const write = (
+  file,
+  value
+) =>
+  fs.writeFileSync(
+    file,
+    JSON.stringify(
+      value,
+      null,
+      2
+    )
+  );
+
+app.use(cors());
+
+app.use(express.json());
+
+app.use(
+  "/uploads",
+  express.static(
+    uploads
+  )
+);
+
+/* =========================
+   LOGIN ADMIN
+========================= */
+
+function auth(
+  req,
+  res,
+  next
+) {
+  const header =
+    req.headers
+      .authorization || "";
+
+  if (
+    !header.startsWith(
+      "Basic "
+    )
+  ) {
+    return res
+      .status(401)
+      .json({
+        error:
+          "Não autorizado",
+      });
+  }
+
+  const decoded =
+    Buffer.from(
+      header.slice(6),
+      "base64"
+    ).toString();
+
+  const separatorIndex =
+    decoded.indexOf(":");
+
+  const user =
+    decoded.slice(
+      0,
+      separatorIndex
+    );
+
+  const password =
+    decoded.slice(
+      separatorIndex + 1
+    );
+
+  const adminUser =
+    process.env
+      .ADMIN_USER ||
+    "admin";
+
+  const adminPassword =
+    process.env
+      .ADMIN_PASSWORD ||
+    "troque-esta-senha";
+
+  if (
+    user !== adminUser ||
+    password !==
+      adminPassword
+  ) {
+    return res
+      .status(401)
+      .json({
+        error:
+          "Usuário ou senha inválidos",
+      });
+  }
+
+  next();
+}
+
+/* =========================
+   UPLOAD
+========================= */
+
+const upload =
+  multer({
+    storage:
+      multer.diskStorage({
+        destination: (
+          _,
+          __,
+          callback
+        ) =>
+          callback(
+            null,
+            uploads
+          ),
+
+        filename: (
+          _,
+          file,
+          callback
+        ) => {
+          callback(
+            null,
+            crypto.randomUUID() +
+              path
+                .extname(
+                  file.originalname
+                )
+                .toLowerCase()
+          );
+        },
+      }),
+  });
+
+/* =========================
+   PRODUTOS
+========================= */
+
+app.get(
+  "/api/products",
+  (req, res) => {
+    const products =
+      read(
+        productsFile
+      );
+
+    res.json(
+      products.filter(
+        (product) =>
+          product.active
+      )
+    );
+  }
+);
+
+app.get(
+  "/api/admin/products",
+  auth,
+  (req, res) => {
+    res.json(
+      read(
+        productsFile
+      )
+    );
+  }
+);
+
+/* =========================
+   UPLOAD FOTO
+========================= */
+
+app.post(
+  "/api/upload",
+  auth,
+  upload.single(
+    "image"
+  ),
+  (req, res) => {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Imagem não enviada",
+        });
+    }
+
+    res.json({
+      image:
+        "/uploads/" +
+        req.file.filename,
+    });
+  }
+);
+
+/* =========================
+   CADASTRAR
+========================= */
+
+app.post(
+  "/api/admin/products",
+  auth,
+  (req, res) => {
+    const products =
+      read(
+        productsFile
+      );
+
+    const body =
+      req.body;
+
+    const id =
+      products.length
+        ? Math.max(
+            ...products.map(
+              (product) =>
+                product.id
+            )
+          ) + 1
+        : 1;
+
+    const newProduct = {
+      id,
+
+      ...body,
+
+      price:
+        Math.round(
+          Number(
+            body.price
+          ) * 100
+        ),
+
+      stock:
+        Number(
+          body.stock || 0
+        ),
+
+      active:
+        body.active
+          ? 1
+          : 0,
+    };
+
+    products.unshift(
+      newProduct
+    );
+
+    write(
+      productsFile,
+      products
+    );
+
+    res.json({
+      id,
+    });
+  }
+);
+
+/* =========================
+   EDITAR
+========================= */
+
+app.put(
+  "/api/admin/products/:id",
+  auth,
+  (req, res) => {
+    const products =
+      read(
+        productsFile
+      );
+
+    const index =
+      products.findIndex(
+        (product) =>
+          product.id ==
+          req.params.id
+      );
+
+    if (index < 0) {
+      return res
+        .status(404)
+        .json({
+          error:
+            "Produto não encontrado",
+        });
+    }
+
+    products[index] = {
+      ...products[index],
+
+      ...req.body,
+
+      price:
+        Math.round(
+          Number(
+            req.body.price
+          ) * 100
+        ),
+
+      stock:
+        Number(
+          req.body.stock || 0
+        ),
+
+      active:
+        req.body.active
+          ? 1
+          : 0,
+    };
+
+    write(
+      productsFile,
+      products
+    );
+
+    res.json({
+      ok: true,
+    });
+  }
+);
+
+/* =========================
+   EXCLUIR
+========================= */
+
+app.delete(
+  "/api/admin/products/:id",
+  auth,
+  (req, res) => {
+    const products =
+      read(
+        productsFile
+      );
+
+    const filtered =
+      products.filter(
+        (product) =>
+          product.id !=
+          req.params.id
+      );
+
+    write(
+      productsFile,
+      filtered
+    );
+
+    res.json({
+      ok: true,
+    });
+  }
+);
+
+/* =========================
+   PEDIDOS
+========================= */
+
+app.get(
+  "/api/orders",
+  auth,
+  (req, res) => {
+    res.json(
+      read(
+        ordersFile
+      ).reverse()
+    );
+  }
+);
+
+/* =========================
+   CHECKOUT
+========================= */
+
+app.post(
+  "/api/checkout",
+  (req, res) => {
+    const {
+      customer,
+      items,
+    } = req.body;
+
+    if (
+      !customer?.name ||
+      !customer?.email ||
+      !customer?.address ||
+      !items?.length
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Dados incompletos",
+        });
+    }
+
+    const products =
+      read(
+        productsFile
+      );
+
+    let total = 0;
+
+    const details = [];
+
+    for (
+      const item of items
+    ) {
+      const product =
+        products.find(
+          (product) =>
+            product.id ==
+              item.id &&
+            product.active
+        );
+
+      const quantity =
+        Number(
+          item.quantity
+        );
+
+      if (
+        !product ||
+        quantity < 1 ||
+        quantity >
+          product.stock
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Produto sem estoque ou inválido",
+          });
+      }
+
+      total +=
+        product.price *
+        quantity;
+
+      details.push({
+        id:
+          product.id,
+
+        name:
+          product.name,
+
+        quantity,
+
+        unit_price:
+          product.price,
+
+        size:
+          item.size || "",
+
+        color:
+          item.color || "",
+      });
+    }
+
+    const orders =
+      read(
+        ordersFile
+      );
+
+    const id =
+      orders.length
+        ? Math.max(
+            ...orders.map(
+              (order) =>
+                order.id
+            )
+          ) + 1
+        : 1;
+
+    orders.push({
+      id,
+
+      customer_name:
+        customer.name,
+
+      email:
+        customer.email,
+
+      phone:
+        customer.phone ||
+        "",
+
+      address:
+        customer.address,
+
+      items:
+        details,
+
+      total,
+
+      payment_status:
+        "pending",
+
+      created_at:
+        new Date()
+          .toISOString(),
+    });
+
+    write(
+      ordersFile,
+      orders
+    );
+
+    res.json({
+      orderId: id,
+
+      paymentMode:
+        "demo",
+
+      message:
+        "Pedido criado.",
+    });
+  }
+);
+
+/* =========================
+   FRONTEND PRODUÇÃO
+========================= */
+
+const clientDist =
+  path.join(
+    root,
+    "client",
+    "dist"
+  );
+
+app.use(
+  express.static(
+    clientDist
+  )
+);
+
+app.get(
+  "*splat",
+  (req, res) => {
+    res.sendFile(
+      path.join(
+        clientDist,
+        "index.html"
+      )
+    );
+  }
+);
+
+/* =========================
+   SERVIDOR
+========================= */
+
+app.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      `HEY BEAUTY rodando na porta ${PORT}`
+    );
+  }
+);
