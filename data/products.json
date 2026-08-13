@@ -1,0 +1,35 @@
+[
+  {
+    "id": 3,
+    "name": "Vestido helena",
+    "description": "",
+    "price": 8000,
+    "stock": 0,
+    "sizes": "P,M,G",
+    "colors": "marrom",
+    "image": "/uploads/1507ae7d-cdd9-4e5a-93cd-3abb6d38ae72.jpeg",
+    "active": 1
+  },
+  {
+    "id": 1,
+    "name": "Vestido Midi",
+    "description": "Modelo elegante e confortável.",
+    "price": 12990,
+    "stock": 10,
+    "sizes": "P,M,G",
+    "colors": "Preto,Vermelho",
+    "image": "",
+    "active": 1
+  },
+  {
+    "id": 2,
+    "name": "Blusa Básica",
+    "description": "Blusa para o dia a dia.",
+    "price": 5990,
+    "stock": 15,
+    "sizes": "P,M,G,GG",
+    "colors": "Branco,Preto",
+    "image": "",
+    "active": 1
+  }
+]
