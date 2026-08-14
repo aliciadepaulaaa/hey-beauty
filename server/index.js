@@ -11,23 +11,14 @@ require("dotenv").config({
 
 const app = express();
 
-const PORT =
-  process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-const root =
-  path.join(__dirname, "..");
+const root = path.join(__dirname, "..");
+const uploads = path.join(root, "uploads");
+const data = path.join(root, "data");
 
-const uploads =
-  path.join(root, "uploads");
-
-const data =
-  path.join(root, "data");
-
-const productsFile =
-  path.join(data, "products.json");
-
-const ordersFile =
-  path.join(data, "orders.json");
+const productsFile = path.join(data, "products.json");
+const ordersFile = path.join(data, "orders.json");
 
 /* =========================================================
    CONFIGURAÇÕES
@@ -47,35 +38,25 @@ const PAGBANK_BASE_URL =
     : "https://sandbox.api.pagseguro.com";
 
 /* =========================================================
-   CRIAR PASTAS
+   PASTAS
 ========================================================= */
 
-fs.mkdirSync(
-  uploads,
-  {
-    recursive: true,
-  }
-);
+fs.mkdirSync(uploads, {
+  recursive: true,
+});
 
-fs.mkdirSync(
-  data,
-  {
-    recursive: true,
-  }
-);
+fs.mkdirSync(data, {
+  recursive: true,
+});
 
-if (
-  !fs.existsSync(productsFile)
-) {
+if (!fs.existsSync(productsFile)) {
   fs.writeFileSync(
     productsFile,
     "[]"
   );
 }
 
-if (
-  !fs.existsSync(ordersFile)
-) {
+if (!fs.existsSync(ordersFile)) {
   fs.writeFileSync(
     ordersFile,
     "[]"
@@ -127,13 +108,11 @@ app.use(
 
 app.use(
   "/uploads",
-  express.static(
-    uploads
-  )
+  express.static(uploads)
 );
 
 /* =========================================================
-   FUNÇÕES AUXILIARES
+   FUNÇÕES
 ========================================================= */
 
 const onlyNumbers = (value) =>
@@ -174,25 +153,24 @@ const saveOrder = (
   );
 };
 
-const splitPhone = (phone) => {
-  const numbers =
+const splitPhone = (
+  phone
+) => {
+  let numbers =
     onlyNumbers(phone);
 
-  let normalized =
-    numbers;
-
   if (
-    normalized.startsWith("55")
+    numbers.startsWith("55")
   ) {
-    normalized =
-      normalized.slice(2);
+    numbers =
+      numbers.slice(2);
   }
 
   const area =
-    normalized.slice(0, 2);
+    numbers.slice(0, 2);
 
   const number =
-    normalized.slice(2);
+    numbers.slice(2);
 
   if (
     area.length !== 2 ||
@@ -258,16 +236,20 @@ const buildShipping = (
         ),
 
       complement:
-        order.complement || "",
+        order.complement ||
+        "",
 
       locality:
-        order.neighborhood || "",
+        order.neighborhood ||
+        "",
 
       city:
         order.city,
 
       region_code:
-        order.state,
+        String(
+          order.state
+        ).toUpperCase(),
 
       country:
         "BRA",
@@ -278,6 +260,36 @@ const buildShipping = (
         ),
     },
   };
+};
+
+const buildCustomer = (
+  order
+) => {
+  const customer = {
+    name:
+      order.customer_name,
+
+    email:
+      order.email,
+
+    tax_id:
+      onlyNumbers(
+        order.cpf
+      ),
+  };
+
+  const phone =
+    splitPhone(
+      order.phone
+    );
+
+  if (phone) {
+    customer.phones = [
+      phone,
+    ];
+  }
+
+  return customer;
 };
 
 const pagBankRequest =
@@ -340,9 +352,11 @@ const pagBankRequest =
       );
 
       const description =
-        result?.error_messages?.[0]
+        result
+          ?.error_messages?.[0]
           ?.description ||
-        result?.error_messages?.[0]
+        result
+          ?.error_messages?.[0]
           ?.message ||
         result?.message ||
         result?.error ||
@@ -366,7 +380,7 @@ const pagBankRequest =
   };
 
 /* =========================================================
-   AUTENTICAÇÃO ADMIN
+   LOGIN ADMIN
 ========================================================= */
 
 function auth(
@@ -376,7 +390,8 @@ function auth(
 ) {
   const header =
     req.headers
-      .authorization || "";
+      .authorization ||
+    "";
 
   if (
     !header.startsWith(
@@ -416,7 +431,8 @@ function auth(
     "admin";
 
   const adminPassword =
-    process.env.ADMIN_PASSWORD ||
+    process.env
+      .ADMIN_PASSWORD ||
     "troque-esta-senha";
 
   if (
@@ -473,7 +489,7 @@ const upload =
   });
 
 /* =========================================================
-   PRODUTOS PÚBLICOS
+   PRODUTOS
 ========================================================= */
 
 app.get(
@@ -492,10 +508,6 @@ app.get(
     );
   }
 );
-
-/* =========================================================
-   ADMIN - PRODUTOS
-========================================================= */
 
 app.get(
   "/api/admin/products",
@@ -672,7 +684,7 @@ app.delete(
 );
 
 /* =========================================================
-   ADMIN - PEDIDOS
+   PEDIDOS ADMIN
 ========================================================= */
 
 app.get(
@@ -688,7 +700,7 @@ app.get(
 );
 
 /* =========================================================
-   CRIAR PEDIDO DA HEY BEAUTY
+   CHECKOUT
 ========================================================= */
 
 app.post(
@@ -702,6 +714,7 @@ app.post(
 
     if (
       !customer?.name ||
+      !customer?.cpf ||
       !customer?.email ||
       !customer?.address ||
       !items?.length
@@ -711,6 +724,22 @@ app.post(
         .json({
           error:
             "Dados incompletos",
+        });
+    }
+
+    const cpf =
+      onlyNumbers(
+        customer.cpf
+      );
+
+    if (
+      cpf.length !== 11
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "CPF inválido.",
         });
     }
 
@@ -790,10 +819,12 @@ app.post(
           product.price,
 
         size:
-          item.size || "",
+          item.size ||
+          "",
 
         color:
-          item.color || "",
+          item.color ||
+          "",
       });
     }
 
@@ -854,35 +885,46 @@ app.post(
       customer_name:
         customer.name,
 
+      cpf,
+
       email:
         customer.email,
 
       phone:
-        customer.phone || "",
+        customer.phone ||
+        "",
 
       cep:
-        customer.cep || "",
+        customer.cep ||
+        "",
 
       street:
-        customer.street || "",
+        customer.street ||
+        "",
 
       number:
-        customer.number || "",
+        customer.number ||
+        "",
 
       complement:
-        customer.complement || "",
+        customer.complement ||
+        "",
 
       neighborhood:
-        customer.neighborhood || "",
+        customer.neighborhood ||
+        "",
 
       city:
-        customer.city || "",
+        customer.city ||
+        "",
 
       state:
-        customer.state || "",
+        customer.state ||
+        "",
 
       reference:
-        customer.reference || "",
+        customer.reference ||
+        "",
 
       address:
         customer.address,
@@ -913,9 +955,6 @@ app.post(
         null,
 
       pagbank_charge_id:
-        null,
-
-      pagbank_qr_code:
         null,
 
       created_at:
@@ -1032,6 +1071,17 @@ app.post(
       }
 
       if (
+        !order.cpf
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "CPF do cliente não encontrado.",
+          });
+      }
+
+      if (
         order.payment_status ===
         "paid"
       ) {
@@ -1043,35 +1093,14 @@ app.post(
           });
       }
 
-      const phone =
-        splitPhone(
-          order.phone
-        );
-
-      const customer = {
-        name:
-          order.customer_name,
-
-        email:
-          order.email,
-      };
-
-      if (phone) {
-        customer.phones = [
-          phone,
-        ];
-      }
-
-      const shipping =
-        buildShipping(
-          order
-        );
-
       const payload = {
         reference_id:
           `HEY-BEAUTY-${order.id}`,
 
-        customer,
+        customer:
+          buildCustomer(
+            order
+          ),
 
         items:
           buildPagBankItems(
@@ -1128,6 +1157,11 @@ app.post(
         ],
       };
 
+      const shipping =
+        buildShipping(
+          order
+        );
+
       if (shipping) {
         payload.shipping =
           shipping;
@@ -1137,7 +1171,8 @@ app.post(
         await pagBankRequest(
           "/orders",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "x-idempotency-key":
@@ -1168,16 +1203,20 @@ app.post(
         payment_status:
           status === "PAID"
             ? "paid"
-            : status.toLowerCase(),
+            : String(
+                status
+              ).toLowerCase(),
 
         installments:
           parcelCount,
 
         pagbank_order_id:
-          pagbank.id || null,
+          pagbank.id ||
+          null,
 
         pagbank_charge_id:
-          charge?.id || null,
+          charge?.id ||
+          null,
 
         pagbank_payment_response:
           charge
@@ -1315,6 +1354,17 @@ app.post(
       }
 
       if (
+        !order.cpf
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "CPF do cliente não encontrado.",
+          });
+      }
+
+      if (
         order.payment_status ===
         "paid"
       ) {
@@ -1325,30 +1375,6 @@ app.post(
               "Este pedido já foi pago.",
           });
       }
-
-      const phone =
-        splitPhone(
-          order.phone
-        );
-
-      const customer = {
-        name:
-          order.customer_name,
-
-        email:
-          order.email,
-      };
-
-      if (phone) {
-        customer.phones = [
-          phone,
-        ];
-      }
-
-      const shipping =
-        buildShipping(
-          order
-        );
 
       const expiration =
         new Date(
@@ -1363,7 +1389,10 @@ app.post(
         reference_id:
           `HEY-BEAUTY-PIX-${order.id}`,
 
-        customer,
+        customer:
+          buildCustomer(
+            order
+          ),
 
         items:
           buildPagBankItems(
@@ -1386,6 +1415,11 @@ app.post(
         ],
       };
 
+      const shipping =
+        buildShipping(
+          order
+        );
+
       if (shipping) {
         payload.shipping =
           shipping;
@@ -1395,7 +1429,8 @@ app.post(
         await pagBankRequest(
           "/orders",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "x-idempotency-key":
@@ -1420,13 +1455,6 @@ app.post(
             "image/png"
         );
 
-      const base64Link =
-        qr?.links?.find(
-          (link) =>
-            link.media ===
-            "text/plain"
-        );
-
       const updatedOrder = {
         ...order,
 
@@ -1437,20 +1465,24 @@ app.post(
           "waiting_payment",
 
         pagbank_order_id:
-          pagbank.id || null,
+          pagbank.id ||
+          null,
 
         pagbank_qr_code_id:
-          qr?.id || null,
+          qr?.id ||
+          null,
 
         pagbank_qr_code:
-          qr?.text || null,
+          qr?.text ||
+          null,
 
         pagbank_qr_code_image:
           imageLink?.href ||
           null,
 
         pix_expiration:
-          qr?.expiration_date ||
+          qr
+            ?.expiration_date ||
           null,
 
         updated_at:
@@ -1477,14 +1509,11 @@ app.post(
           "WAITING_PAYMENT",
 
         qrCode:
-          qr?.text || null,
+          qr?.text ||
+          null,
 
         qrCodeImage:
           imageLink?.href ||
-          null,
-
-        qrCodeBase64:
-          base64Link?.href ||
           null,
 
         expirationDate:
@@ -1556,7 +1585,9 @@ app.post(
 
       let index = -1;
 
-      if (pagbankOrderId) {
+      if (
+        pagbankOrderId
+      ) {
         index =
           orders.findIndex(
             (order) =>
@@ -1638,7 +1669,7 @@ app.post(
 );
 
 /* =========================================================
-   FRONTEND PRODUÇÃO
+   FRONTEND
 ========================================================= */
 
 const clientDist =

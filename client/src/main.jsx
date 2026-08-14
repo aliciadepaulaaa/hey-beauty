@@ -87,16 +87,14 @@ const api = async (url, options = {}) => {
       ? url
       : API_URL + url;
 
-  const response =
-    await fetch(
-      finalUrl,
-      options
-    );
+  const response = await fetch(
+    finalUrl,
+    options
+  );
 
-  const data =
-    await response
-      .json()
-      .catch(() => ({}));
+  const data = await response
+    .json()
+    .catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
@@ -836,6 +834,7 @@ function Checkout({
   const [form, setForm] =
     useState({
       name: "",
+      cpf: "",
       email: "",
       phone: "",
 
@@ -908,6 +907,16 @@ function Checkout({
         return;
       }
 
+      if (
+        onlyNumbers(form.cpf).length !== 11
+      ) {
+        setMessage(
+          "Informe um CPF válido com 11 números."
+        );
+
+        return;
+      }
+
       setLoading(true);
 
       setMessage(
@@ -951,6 +960,11 @@ function Checkout({
                   customer: {
                     name:
                       form.name,
+
+                    cpf:
+                      onlyNumbers(
+                        form.cpf
+                      ),
 
                     email:
                       form.email,
@@ -1021,8 +1035,13 @@ function Checkout({
           deliveryMethod:
             form.deliveryMethod,
 
-          customer:
-            form,
+          customer: {
+            ...form,
+            cpf:
+              onlyNumbers(
+                form.cpf
+              ),
+          },
         };
 
         localStorage.setItem(
@@ -1094,6 +1113,20 @@ function Checkout({
               onChange={(e) =>
                 updateField(
                   "name",
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              required
+              placeholder="CPF"
+              inputMode="numeric"
+              maxLength="14"
+              value={form.cpf}
+              onChange={(e) =>
+                updateField(
+                  "cpf",
                   e.target.value
                 )
               }
