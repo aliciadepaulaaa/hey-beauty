@@ -26,7 +26,7 @@ const PAGBANK_PUBLIC_KEY =
   import.meta.env.VITE_PAGBANK_PUBLIC_KEY || "";
 
 /* =========================================================
-   FUNÇÕES
+   FUNÇÕES GERAIS
 ========================================================= */
 
 const money = (value) =>
@@ -50,18 +50,29 @@ const parsePrice = (value) => {
   text = text.replace(/\s/g, "");
 
   if (text.includes(",") && text.includes(".")) {
-    text = text
-      .replace(/\./g, "")
-      .replace(",", ".");
+    text = text.replace(/\./g, "").replace(",", ".");
   } else {
     text = text.replace(",", ".");
   }
 
   const number = Number(text);
 
-  return Number.isFinite(number)
-    ? number
-    : 0;
+  return Number.isFinite(number) ? number : 0;
+};
+
+const formatCpf = (value) => {
+  const numbers = onlyNumbers(value).slice(0, 11);
+
+  return numbers
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
+
+const formatCep = (value) => {
+  const numbers = onlyNumbers(value).slice(0, 8);
+
+  return numbers.replace(/(\d{5})(\d)/, "$1-$2");
 };
 
 const imageUrl = (image) => {
@@ -78,27 +89,19 @@ const imageUrl = (image) => {
 };
 
 const api = async (url, options = {}) => {
-  const finalUrl =
-    url.startsWith("http")
-      ? url
-      : API_URL + url;
+  const finalUrl = url.startsWith("http")
+    ? url
+    : API_URL + url;
 
-  const response =
-    await fetch(
-      finalUrl,
-      options
-    );
+  const response = await fetch(finalUrl, options);
 
-  const data =
-    await response
-      .json()
-      .catch(() => ({}));
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
       data.error ||
-      data.message ||
-      "Ocorreu um erro."
+        data.message ||
+        "Ocorreu um erro."
     );
   }
 
@@ -106,7 +109,7 @@ const api = async (url, options = {}) => {
 };
 
 /* =========================================================
-   PAGBANK SDK
+   SDK PAGBANK
 ========================================================= */
 
 const loadPagBankSdk = () =>
@@ -116,35 +119,28 @@ const loadPagBankSdk = () =>
       return;
     }
 
-    const existing =
-      document.querySelector(
-        'script[data-pagbank-sdk="true"]'
-      );
+    const existing = document.querySelector(
+      'script[data-pagbank-sdk="true"]'
+    );
 
     if (existing) {
-      existing.addEventListener(
-        "load",
-        () => resolve(window.PagSeguro)
+      existing.addEventListener("load", () =>
+        resolve(window.PagSeguro)
       );
 
-      existing.addEventListener(
-        "error",
-        reject
-      );
+      existing.addEventListener("error", reject);
 
       return;
     }
 
-    const script =
-      document.createElement("script");
+    const script = document.createElement("script");
 
     script.src =
       "https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js";
 
     script.async = true;
 
-    script.dataset.pagbankSdk =
-      "true";
+    script.dataset.pagbankSdk = "true";
 
     script.onload = () =>
       resolve(window.PagSeguro);
@@ -156,9 +152,7 @@ const loadPagBankSdk = () =>
         )
       );
 
-    document.body.appendChild(
-      script
-    );
+    document.body.appendChild(script);
   });
 
 /* =========================================================
@@ -166,16 +160,15 @@ const loadPagBankSdk = () =>
 ========================================================= */
 
 function App() {
-  const [cart, setCart] =
-    useState(() => {
-      try {
-        return JSON.parse(
-          localStorage.getItem("cart") || "[]"
-        );
-      } catch {
-        return [];
-      }
-    });
+  const [cart, setCart] = useState(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem("cart") || "[]"
+      );
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem(
@@ -190,18 +183,15 @@ function App() {
     color = ""
   ) => {
     setCart((currentCart) => {
-      const index =
-        currentCart.findIndex(
-          (item) =>
-            item.id === product.id &&
-            item.size === size &&
-            item.color === color
-        );
+      const index = currentCart.findIndex(
+        (item) =>
+          item.id === product.id &&
+          item.size === size &&
+          item.color === color
+      );
 
       if (index >= 0) {
-        const updated = [
-          ...currentCart,
-        ];
+        const updated = [...currentCart];
 
         updated[index] = {
           ...updated[index],
@@ -227,23 +217,16 @@ function App() {
     });
   };
 
-  const removeFromCart = (
-    index
-  ) => {
+  const removeFromCart = (index) => {
     setCart((currentCart) =>
-      currentCart.filter(
-        (_, i) => i !== index
-      )
+      currentCart.filter((_, i) => i !== index)
     );
   };
 
   return (
     <>
       <header>
-        <Link
-          className="brand"
-          to="/"
-        >
+        <Link className="brand" to="/">
           HEY BEAUTY
         </Link>
 
@@ -260,10 +243,6 @@ function App() {
               0
             )}
             )
-          </Link>
-
-          <Link to="/admin">
-            Admin
           </Link>
         </nav>
       </header>
@@ -296,9 +275,7 @@ function App() {
         <Route
           path="/checkout"
           element={
-            <Checkout
-              cart={cart}
-            />
+            <Checkout cart={cart} />
           }
         />
 
@@ -312,6 +289,7 @@ function App() {
           }
         />
 
+        {/* NÃO APARECE NO MENU, MAS CONTINUA ACESSÍVEL */}
         <Route
           path="/admin"
           element={<Admin />}
@@ -326,27 +304,18 @@ function App() {
 ========================================================= */
 
 function Home() {
-  const [products, setProducts] =
-    useState([]);
-
-  const [error, setError] =
-    useState("");
+  const [products, setProducts] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api("/api/products")
       .then((data) => {
         setProducts(
-          Array.isArray(data)
-            ? data
-            : []
+          Array.isArray(data) ? data : []
         );
       })
       .catch((error) => {
-        console.error(error);
-
-        setError(
-          error.message
-        );
+        setError(error.message);
       });
   }, []);
 
@@ -354,17 +323,15 @@ function Home() {
     <main>
       <section className="hero">
         <div>
-          <span>
-            HEY BEAUTY
-          </span>
+          <span>HEY BEAUTY</span>
 
           <h1>
             Seu estilo começa aqui.
           </h1>
 
           <p>
-            Escolha suas peças favoritas
-            e encontre seu próximo look.
+            Escolha suas peças favoritas e
+            encontre seu próximo look.
           </p>
 
           <a
@@ -391,62 +358,55 @@ function Home() {
         )}
 
         <div className="grid">
-          {products.map(
-            (product) => (
-              <article
-                className="card"
-                key={product.id}
-              >
-                {product.image ? (
-                  <img
-                    src={imageUrl(
-                      product.image
-                    )}
-                    alt={
-                      product.name
-                    }
-                  />
-                ) : (
-                  <div className="placeholder">
-                    FOTO DA PEÇA
-                  </div>
+          {products.map((product) => (
+            <article
+              className="card"
+              key={product.id}
+            >
+              {product.image ? (
+                <img
+                  src={imageUrl(product.image)}
+                  alt={product.name}
+                />
+              ) : (
+                <div className="placeholder">
+                  FOTO DA PEÇA
+                </div>
+              )}
+
+              <div className="cardbody">
+                <h3>
+                  {product.name}
+                </h3>
+
+                <p>
+                  {product.description}
+                </p>
+
+                <strong>
+                  {money(product.price)}
+                </strong>
+
+                {Number(product.stock) <= 0 && (
+                  <p>
+                    <strong>
+                      Esgotado
+                    </strong>
+                  </p>
                 )}
 
-                <div className="cardbody">
-                  <h3>
-                    {product.name}
-                  </h3>
-
-                  <p>
-                    {
-                      product.description
-                    }
-                  </p>
-
-                  <strong>
-                    {money(
-                      product.price
-                    )}
-                  </strong>
-
-                  <p>
-                    Estoque:{" "}
-                    {product.stock}
-                  </p>
-
-                  <Link
-                    className="btn full"
-                    to={
-                      "/produto/" +
-                      product.id
-                    }
-                  >
-                    Ver detalhes
-                  </Link>
-                </div>
-              </article>
-            )
-          )}
+                <Link
+                  className="btn full"
+                  to={
+                    "/produto/" +
+                    product.id
+                  }
+                >
+                  Ver detalhes
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </main>
@@ -460,8 +420,7 @@ function Home() {
 function ProductPage({
   addToCart,
 }) {
-  const { id } =
-    useParams();
+  const { id } = useParams();
 
   return (
     <Product
@@ -498,14 +457,10 @@ function Product({
               )
             : null;
 
-        setProduct(
-          found || null
-        );
+        setProduct(found || null);
       })
       .catch((error) => {
-        setMessage(
-          error.message
-        );
+        setMessage(error.message);
       });
   }, [id]);
 
@@ -518,13 +473,9 @@ function Product({
   }
 
   const add = () => {
-    if (
-      Number(
-        product.stock
-      ) <= 0
-    ) {
+    if (Number(product.stock) <= 0) {
       setMessage(
-        "Esta peça está sem estoque."
+        "Esta peça está esgotada."
       );
 
       return;
@@ -568,12 +519,8 @@ function Product({
       <div>
         {product.image ? (
           <img
-            src={imageUrl(
-              product.image
-            )}
-            alt={
-              product.name
-            }
+            src={imageUrl(product.image)}
+            alt={product.name}
           />
         ) : (
           <div className="placeholder big">
@@ -588,20 +535,11 @@ function Product({
         </h1>
 
         <h2>
-          {money(
-            product.price
-          )}
+          {money(product.price)}
         </h2>
 
         <p>
           {product.description}
-        </p>
-
-        <p>
-          Estoque disponível:{" "}
-          <strong>
-            {product.stock}
-          </strong>
         </p>
 
         {product.sizes && (
@@ -613,9 +551,7 @@ function Product({
             <select
               value={size}
               onChange={(e) =>
-                setSize(
-                  e.target.value
-                )
+                setSize(e.target.value)
               }
             >
               <option value="">
@@ -645,9 +581,7 @@ function Product({
             <select
               value={color}
               onChange={(e) =>
-                setColor(
-                  e.target.value
-                )
+                setColor(e.target.value)
               }
             >
               <option value="">
@@ -672,14 +606,10 @@ function Product({
           className="btn full"
           onClick={add}
           disabled={
-            Number(
-              product.stock
-            ) <= 0
+            Number(product.stock) <= 0
           }
         >
-          {Number(
-            product.stock
-          ) <= 0
+          {Number(product.stock) <= 0
             ? "Produto esgotado"
             : "Adicionar ao carrinho"}
         </button>
@@ -766,9 +696,7 @@ function Cart({
 
                   <button
                     onClick={() =>
-                      removeFromCart(
-                        index
-                      )
+                      removeFromCart(index)
                     }
                   >
                     Excluir
@@ -779,8 +707,7 @@ function Cart({
           </div>
 
           <div className="total">
-            Total:{" "}
-            {money(total)}
+            Total: {money(total)}
           </div>
 
           <Link
@@ -819,7 +746,6 @@ function Checkout({
       neighborhood: "",
       city: "",
       state: "",
-      reference: "",
 
       deliveryMethod: "",
     });
@@ -833,6 +759,9 @@ function Checkout({
   const [loading, setLoading] =
     useState(false);
 
+  const [loadingCep, setLoadingCep] =
+    useState(false);
+
   const subtotal =
     cart.reduce(
       (sum, item) =>
@@ -843,10 +772,8 @@ function Checkout({
     );
 
   const fixedDelivery =
-    form.deliveryMethod ===
-      "salvador" ||
-    form.deliveryMethod ===
-      "lauro";
+    form.deliveryMethod === "salvador" ||
+    form.deliveryMethod === "lauro";
 
   const shipping =
     fixedDelivery
@@ -862,183 +789,260 @@ function Checkout({
     field,
     value
   ) => {
-    setForm(
-      (current) => ({
-        ...current,
-        [field]: value,
-      })
-    );
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
   };
 
-  const submit =
-    async (event) => {
-      event.preventDefault();
+  /* =======================================================
+     BUSCAR CEP AUTOMATICAMENTE
+  ======================================================= */
 
-      if (
-        !form.deliveryMethod
-      ) {
-        setMessage(
-          "Escolha a forma de entrega."
-        );
-
-        return;
-      }
-
-      if (
-        onlyNumbers(
-          form.cpf
-        ).length !== 11
-      ) {
-        setMessage(
-          "Informe um CPF com 11 números."
-        );
-
-        return;
-      }
-
-      setLoading(true);
-
-      setMessage(
-        "Criando pedido..."
+  const buscarCep = async (
+    cepDigitado
+  ) => {
+    const cep =
+      onlyNumbers(
+        cepDigitado
       );
 
-      const completeAddress = [
-        form.street,
+    if (cep.length !== 8) {
+      return;
+    }
 
-        form.number &&
-          `nº ${form.number}`,
+    try {
+      setLoadingCep(true);
 
-        form.complement,
-
-        form.neighborhood,
-
-        form.city,
-
-        form.state,
-
-        form.cep &&
-          `CEP ${form.cep}`,
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      try {
-        const data =
-          await api(
-            "/api/checkout",
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body:
-                JSON.stringify({
-                  customer: {
-                    name:
-                      form.name,
-
-                    cpf:
-                      onlyNumbers(
-                        form.cpf
-                      ),
-
-                    email:
-                      form.email,
-
-                    phone:
-                      form.phone,
-
-                    address:
-                      completeAddress,
-
-                    cep:
-                      form.cep,
-
-                    street:
-                      form.street,
-
-                    number:
-                      form.number,
-
-                    complement:
-                      form.complement,
-
-                    neighborhood:
-                      form.neighborhood,
-
-                    city:
-                      form.city,
-
-                    state:
-                      form.state,
-
-                    reference:
-                      form.reference,
-                  },
-
-                  delivery: {
-                    method:
-                      form.deliveryMethod,
-
-                    shipping,
-                  },
-
-                  items:
-                    cart,
-                }),
-            }
-          );
-
-        const paymentOrder = {
-          orderId:
-            data.orderId,
-
-          subtotal,
-
-          shipping:
-            data.shippingFee,
-
-          total:
-            data.total,
-
-          deliveryMethod:
-            form.deliveryMethod,
-
-          customer: {
-            ...form,
-
-            cpf:
-              onlyNumbers(
-                form.cpf
-              ),
-          },
-        };
-
-        localStorage.setItem(
-          "paymentOrder",
-          JSON.stringify(
-            paymentOrder
-          )
+      const response =
+        await fetch(
+          `https://viacep.com.br/ws/${cep}/json/`
         );
 
-        setOrder(
-          paymentOrder
-        );
+      const data =
+        await response.json();
 
+      if (data.erro) {
         setMessage(
-          `Pedido #${data.orderId} criado com sucesso.`
+          "CEP não encontrado."
         );
-      } catch (error) {
-        setMessage(
-          error.message
-        );
-      } finally {
-        setLoading(false);
+
+        return;
       }
-    };
+
+      setForm((current) => ({
+        ...current,
+
+        cep:
+          data.cep ||
+          formatCep(cep),
+
+        street:
+          data.logradouro ||
+          "",
+
+        neighborhood:
+          data.bairro ||
+          "",
+
+        city:
+          data.localidade ||
+          "",
+
+        state:
+          data.uf ||
+          "",
+      }));
+
+      setMessage(
+        "Endereço preenchido automaticamente."
+      );
+    } catch {
+      setMessage(
+        "Não foi possível consultar o CEP."
+      );
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const submit = async (
+    event
+  ) => {
+    event.preventDefault();
+
+    if (!form.deliveryMethod) {
+      setMessage(
+        "Escolha a forma de entrega."
+      );
+
+      return;
+    }
+
+    if (
+      onlyNumbers(
+        form.cpf
+      ).length !== 11
+    ) {
+      setMessage(
+        "Informe um CPF válido."
+      );
+
+      return;
+    }
+
+    if (
+      onlyNumbers(
+        form.cep
+      ).length !== 8
+    ) {
+      setMessage(
+        "Informe um CEP válido."
+      );
+
+      return;
+    }
+
+    setLoading(true);
+
+    setMessage(
+      "Criando pedido..."
+    );
+
+    const completeAddress = [
+      form.street,
+
+      form.number &&
+        `nº ${form.number}`,
+
+      form.complement,
+
+      form.neighborhood,
+
+      form.city,
+
+      form.state,
+
+      form.cep &&
+        `CEP ${form.cep}`,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    try {
+      const data =
+        await api(
+          "/api/checkout",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                customer: {
+                  name:
+                    form.name,
+
+                  cpf:
+                    onlyNumbers(
+                      form.cpf
+                    ),
+
+                  email:
+                    form.email,
+
+                  phone:
+                    form.phone,
+
+                  address:
+                    completeAddress,
+
+                  cep:
+                    form.cep,
+
+                  street:
+                    form.street,
+
+                  number:
+                    form.number,
+
+                  complement:
+                    form.complement,
+
+                  neighborhood:
+                    form.neighborhood,
+
+                  city:
+                    form.city,
+
+                  state:
+                    form.state,
+                },
+
+                delivery: {
+                  method:
+                    form.deliveryMethod,
+
+                  shipping,
+                },
+
+                items:
+                  cart,
+              }),
+          }
+        );
+
+      const paymentOrder = {
+        orderId:
+          data.orderId,
+
+        subtotal,
+
+        shipping:
+          data.shippingFee,
+
+        total:
+          data.total,
+
+        deliveryMethod:
+          form.deliveryMethod,
+
+        customer: {
+          ...form,
+
+          cpf:
+            onlyNumbers(
+              form.cpf
+            ),
+        },
+      };
+
+      localStorage.setItem(
+        "paymentOrder",
+        JSON.stringify(
+          paymentOrder
+        )
+      );
+
+      setOrder(
+        paymentOrder
+      );
+
+      setMessage(
+        `Pedido #${data.orderId} criado com sucesso.`
+      );
+    } catch (error) {
+      setMessage(
+        error.message
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!cart.length) {
     return (
@@ -1065,11 +1069,9 @@ function Checkout({
         </h1>
 
         {!order ? (
-          <form
-            onSubmit={submit}
-          >
+          <form onSubmit={submit}>
             <h3>
-              Dados pessoais
+              Seus dados
             </h3>
 
             <input
@@ -1088,11 +1090,14 @@ function Checkout({
               required
               placeholder="CPF"
               inputMode="numeric"
+              maxLength="14"
               value={form.cpf}
               onChange={(e) =>
                 updateField(
                   "cpf",
-                  e.target.value
+                  formatCpf(
+                    e.target.value
+                  )
                 )
               }
             />
@@ -1112,7 +1117,7 @@ function Checkout({
 
             <input
               required
-              placeholder="Telefone / WhatsApp"
+              placeholder="WhatsApp"
               value={form.phone}
               onChange={(e) =>
                 updateField(
@@ -1129,25 +1134,66 @@ function Checkout({
             <input
               required
               placeholder="CEP"
+              inputMode="numeric"
+              maxLength="9"
               value={form.cep}
-              onChange={(e) =>
+              onChange={(e) => {
+                const formatted =
+                  formatCep(
+                    e.target.value
+                  );
+
                 updateField(
                   "cep",
-                  e.target.value
-                )
-              }
+                  formatted
+                );
+
+                if (
+                  onlyNumbers(
+                    formatted
+                  ).length === 8
+                ) {
+                  buscarCep(
+                    formatted
+                  );
+                }
+              }}
             />
+
+            {loadingCep && (
+              <p>
+                Buscando endereço...
+              </p>
+            )}
 
             <input
               required
               placeholder="Rua / Avenida"
               value={form.street}
-              onChange={(e) =>
-                updateField(
-                  "street",
-                  e.target.value
-                )
+              readOnly
+            />
+
+            <input
+              required
+              placeholder="Bairro"
+              value={
+                form.neighborhood
               }
+              readOnly
+            />
+
+            <input
+              required
+              placeholder="Cidade"
+              value={form.city}
+              readOnly
+            />
+
+            <input
+              required
+              placeholder="UF"
+              value={form.state}
+              readOnly
             />
 
             <input
@@ -1163,66 +1209,13 @@ function Checkout({
             />
 
             <input
-              placeholder="Complemento"
+              placeholder="Complemento (opcional)"
               value={
                 form.complement
               }
               onChange={(e) =>
                 updateField(
                   "complement",
-                  e.target.value
-                )
-              }
-            />
-
-            <input
-              required
-              placeholder="Bairro"
-              value={
-                form.neighborhood
-              }
-              onChange={(e) =>
-                updateField(
-                  "neighborhood",
-                  e.target.value
-                )
-              }
-            />
-
-            <input
-              required
-              placeholder="Cidade"
-              value={form.city}
-              onChange={(e) =>
-                updateField(
-                  "city",
-                  e.target.value
-                )
-              }
-            />
-
-            <input
-              required
-              placeholder="UF"
-              maxLength="2"
-              value={form.state}
-              onChange={(e) =>
-                updateField(
-                  "state",
-                  e.target.value
-                    .toUpperCase()
-                )
-              }
-            />
-
-            <input
-              placeholder="Ponto de referência"
-              value={
-                form.reference
-              }
-              onChange={(e) =>
-                updateField(
-                  "reference",
                   e.target.value
                 )
               }
@@ -1341,8 +1334,8 @@ function Checkout({
               </strong>
 
               <p>
-                Valor do frete definido pelo
-                aplicativo no momento da solicitação.
+                Valor do frete definido pelo aplicativo
+                no momento da solicitação.
               </p>
             </label>
 
@@ -1380,8 +1373,7 @@ function Checkout({
 
               <p>
                 Envio para todo o Brasil.
-                Cálculo automático de frete
-                em configuração.
+                Cálculo automático de frete em configuração.
               </p>
             </label>
 
@@ -1417,16 +1409,14 @@ function Checkout({
             {order.deliveryMethod ===
               "uber_99" && (
               <p>
-                Uber Flash / 99 Entrega —
-                valor definido pelo aplicativo.
+                Uber Flash / 99 Entrega — valor definido pelo aplicativo.
               </p>
             )}
 
             {order.deliveryMethod ===
               "nuvem_envio" && (
               <p>
-                Nuvem Envio / Correios SEDEX —
-                cálculo em configuração.
+                Nuvem Envio / Correios SEDEX — cálculo em configuração.
               </p>
             )}
 
@@ -1443,8 +1433,7 @@ function Checkout({
               </button>
             ) : (
               <p className="notice">
-                O valor da entrega precisa ser
-                definido antes do pagamento.
+                O valor da entrega precisa ser definido antes do pagamento.
               </p>
             )}
           </div>
@@ -1488,9 +1477,7 @@ function Checkout({
           </span>
 
           <span>
-            {money(
-              subtotal
-            )}
+            {money(subtotal)}
           </span>
         </p>
 
@@ -1518,9 +1505,7 @@ function Checkout({
               </span>
 
               <span>
-                {money(
-                  total
-                )}
+                {money(total)}
               </span>
             </b>
           </>
@@ -1620,9 +1605,7 @@ function Payment({
     );
   }
 
-  if (
-    order.total == null
-  ) {
+  if (order.total == null) {
     return (
       <main className="section">
         <h1>
@@ -1631,24 +1614,20 @@ function Payment({
 
         <div className="panel">
           <p>
-            O valor da entrega ainda precisa
-            ser definido antes do pagamento.
+            O valor da entrega ainda precisa ser definido antes do pagamento.
           </p>
 
           {order.deliveryMethod ===
             "uber_99" && (
             <p>
-              O valor do Uber Flash / 99 Entrega
-              será definido pelo aplicativo.
+              O valor do Uber Flash / 99 Entrega será definido pelo aplicativo.
             </p>
           )}
 
           {order.deliveryMethod ===
             "nuvem_envio" && (
             <p>
-              O cálculo do Nuvem Envio /
-              Correios SEDEX ainda está em
-              configuração.
+              O cálculo do Nuvem Envio / Correios SEDEX ainda está em configuração.
             </p>
           )}
         </div>
@@ -1660,20 +1639,16 @@ function Payment({
     field,
     value
   ) => {
-    setCardForm(
-      (current) => ({
-        ...current,
-        [field]: value,
-      })
-    );
+    setCardForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
   };
 
   const loadInstallments =
     async (number) => {
       const bin =
-        onlyNumbers(
-          number
-        ).slice(0, 6);
+        onlyNumbers(number).slice(0, 6);
 
       if (
         bin.length !== 6 ||
@@ -1694,9 +1669,7 @@ function Payment({
         const plans =
           result.plans || [];
 
-        setInstallmentPlans(
-          plans
-        );
+        setInstallmentPlans(plans);
 
         if (plans.length) {
           setInstallments(
@@ -1740,9 +1713,7 @@ function Payment({
             }
           );
 
-        setPix(
-          result
-        );
+        setPix(result);
 
         setMessage(
           "Pix gerado com sucesso."
@@ -1758,15 +1729,12 @@ function Payment({
 
   const copyPix =
     async () => {
-      if (!pix?.qrCode) {
-        return;
-      }
+      if (!pix?.qrCode) return;
 
       try {
-        await navigator.clipboard
-          .writeText(
-            pix.qrCode
-          );
+        await navigator.clipboard.writeText(
+          pix.qrCode
+        );
 
         setMessage(
           "Código Pix copiado!"
@@ -1787,17 +1755,13 @@ function Payment({
           "Processando cartão..."
         );
 
-        if (
-          !PAGBANK_PUBLIC_KEY
-        ) {
+        if (!PAGBANK_PUBLIC_KEY) {
           throw new Error(
             "Chave pública do PagBank não configurada."
           );
         }
 
-        if (
-          !window.PagSeguro
-        ) {
+        if (!window.PagSeguro) {
           await loadPagBankSdk();
         }
 
@@ -1807,36 +1771,33 @@ function Payment({
           );
 
         const encrypted =
-          window.PagSeguro
-            .encryptCard({
-              publicKey:
-                PAGBANK_PUBLIC_KEY,
+          window.PagSeguro.encryptCard({
+            publicKey:
+              PAGBANK_PUBLIC_KEY,
 
-              holder:
-                cardForm.holder,
+            holder:
+              cardForm.holder,
 
-              number:
-                cardNumber,
+            number:
+              cardNumber,
 
-              expMonth:
-                onlyNumbers(
-                  cardForm.expMonth
-                ),
+            expMonth:
+              onlyNumbers(
+                cardForm.expMonth
+              ),
 
-              expYear:
-                onlyNumbers(
-                  cardForm.expYear
-                ),
+            expYear:
+              onlyNumbers(
+                cardForm.expYear
+              ),
 
-              securityCode:
-                onlyNumbers(
-                  cardForm.securityCode
-                ),
-            });
+            securityCode:
+              onlyNumbers(
+                cardForm.securityCode
+              ),
+          });
 
-        if (
-          encrypted.hasErrors
-        ) {
+        if (encrypted.hasErrors) {
           throw new Error(
             encrypted.errors
               ?.map(
@@ -1845,7 +1806,7 @@ function Payment({
                   error.code
               )
               .join(", ") ||
-            "Dados do cartão inválidos."
+              "Dados do cartão inválidos."
           );
         }
 
@@ -1874,8 +1835,7 @@ function Payment({
                     ),
 
                   encryptedCard:
-                    encrypted
-                      .encryptedCard,
+                    encrypted.encryptedCard,
 
                   holder: {
                     name:
@@ -1892,13 +1852,10 @@ function Payment({
 
         setMessage(
           result.message ||
-          "Pagamento processado."
+            "Pagamento processado."
         );
 
-        if (
-          result.status ===
-          "PAID"
-        ) {
+        if (result.status === "PAID") {
           setCart([]);
 
           localStorage.removeItem(
@@ -1953,10 +1910,7 @@ function Payment({
                 "pix"
               }
               onChange={() => {
-                setPaymentMethod(
-                  "pix"
-                );
-
+                setPaymentMethod("pix");
                 setPix(null);
               }}
             />
@@ -2066,8 +2020,7 @@ function Payment({
                   )}
 
                   <p>
-                    Abra o aplicativo do seu banco
-                    e escaneie o QR Code.
+                    Abra o aplicativo do seu banco e escaneie o QR Code.
                   </p>
 
                   {pix.qrCode && (
@@ -2087,9 +2040,7 @@ function Payment({
 
                       <button
                         className="btn full"
-                        onClick={
-                          copyPix
-                        }
+                        onClick={copyPix}
                       >
                         Copiar código Pix
                       </button>
@@ -2133,7 +2084,9 @@ function Payment({
                 onChange={(e) =>
                   updateCard(
                     "taxId",
-                    e.target.value
+                    formatCpf(
+                      e.target.value
+                    )
                   )
                 }
               />
@@ -2159,7 +2112,8 @@ function Payment({
 
               <div
                 style={{
-                  display: "grid",
+                  display:
+                    "grid",
                   gridTemplateColumns:
                     "1fr 1fr 1fr",
                   gap: "10px",
@@ -2257,8 +2211,7 @@ function Payment({
                         {plan.interest_free
                           ? "sem juros"
                           : `total ${money(
-                              plan.amount
-                                ?.value
+                              plan.amount?.value
                             )}`}
                       </option>
                     )
@@ -2272,9 +2225,7 @@ function Payment({
                   loading ||
                   !installmentPlans.length
                 }
-                onClick={
-                  payCard
-                }
+                onClick={payCard}
               >
                 {loading
                   ? "Processando..."
@@ -2532,8 +2483,7 @@ function Admin() {
   const uploadImage =
     async (event) => {
       const file =
-        event.target
-          .files?.[0];
+        event.target.files?.[0];
 
       if (!file) return;
 
@@ -2551,8 +2501,10 @@ function Admin() {
             "/api/upload",
             {
               method: "POST",
+
               headers:
                 headers(),
+
               body:
                 formData,
             }
@@ -2860,8 +2812,10 @@ function Admin() {
             )}
             alt="Preview"
             style={{
-              width: "180px",
-              height: "220px",
+              width:
+                "180px",
+              height:
+                "220px",
               objectFit:
                 "cover",
               marginTop:
@@ -2931,8 +2885,11 @@ function Admin() {
                 {money(
                   product.price
                 )}
+
                 {" · "}
+
                 estoque{" "}
+
                 {product.stock}
               </span>
 
@@ -3008,9 +2965,7 @@ function Admin() {
 ========================================================= */
 
 createRoot(
-  document.getElementById(
-    "root"
-  )
+  document.getElementById("root")
 ).render(
   <BrowserRouter>
     <App />
