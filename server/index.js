@@ -11,52 +11,101 @@ require("dotenv").config({
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+  process.env.PORT || 3000;
 
-const root = path.join(__dirname, "..");
-const uploads = path.join(root, "uploads");
-const data = path.join(root, "data");
+const root =
+  path.join(__dirname, "..");
 
-const productsFile = path.join(data, "products.json");
-const ordersFile = path.join(data, "orders.json");
+/* =========================================================
+   DADOS / ARQUIVOS
+========================================================= */
+
+const data =
+  process.env.DATA_DIR
+    ? process.env.DATA_DIR
+    : path.join(root, "data");
+
+const uploads =
+  process.env.DATA_DIR
+    ? path.join(
+        process.env.DATA_DIR,
+        "uploads"
+      )
+    : path.join(
+        root,
+        "uploads"
+      );
+
+const productsFile =
+  path.join(
+    data,
+    "products.json"
+  );
+
+const ordersFile =
+  path.join(
+    data,
+    "orders.json"
+  );
 
 /* =========================================================
    CONFIGURAÇÕES
 ========================================================= */
 
-const LOCAL_SHIPPING = 1500;
+const FIXED_SHIPPING = 1500;
 
 const PAGBANK_TOKEN =
   process.env.PAGBANK_TOKEN || "";
 
 const PAGBANK_ENV =
-  process.env.PAGBANK_ENV || "sandbox";
+  process.env.PAGBANK_ENV ||
+  "sandbox";
+
+const PUBLIC_URL =
+  process.env.PUBLIC_URL ||
+  "https://hey-beauty.onrender.com";
 
 const PAGBANK_BASE_URL =
-  PAGBANK_ENV === "production"
+  PAGBANK_ENV ===
+  "production"
     ? "https://api.pagseguro.com"
     : "https://sandbox.api.pagseguro.com";
 
 /* =========================================================
-   PASTAS
+   CRIAR PASTAS
 ========================================================= */
 
-fs.mkdirSync(uploads, {
-  recursive: true,
-});
+fs.mkdirSync(
+  data,
+  {
+    recursive: true,
+  }
+);
 
-fs.mkdirSync(data, {
-  recursive: true,
-});
+fs.mkdirSync(
+  uploads,
+  {
+    recursive: true,
+  }
+);
 
-if (!fs.existsSync(productsFile)) {
+if (
+  !fs.existsSync(
+    productsFile
+  )
+) {
   fs.writeFileSync(
     productsFile,
     "[]"
   );
 }
 
-if (!fs.existsSync(ordersFile)) {
+if (
+  !fs.existsSync(
+    ordersFile
+  )
+) {
   fs.writeFileSync(
     ordersFile,
     "[]"
@@ -75,7 +124,13 @@ const read = (file) => {
         "utf8"
       )
     );
-  } catch {
+  } catch (error) {
+    console.error(
+      "Erro ao ler arquivo:",
+      file,
+      error
+    );
+
     return [];
   }
 };
@@ -108,31 +163,46 @@ app.use(
 
 app.use(
   "/uploads",
-  express.static(uploads)
+  express.static(
+    uploads
+  )
 );
 
 /* =========================================================
-   FUNÇÕES
+   AUXILIARES
 ========================================================= */
 
-const onlyNumbers = (value) =>
-  String(value || "")
-    .replace(/\D/g, "");
+const onlyNumbers = (
+  value
+) =>
+  String(
+    value || ""
+  ).replace(
+    /\D/g,
+    ""
+  );
 
-const findOrder = (id) => {
+const findOrder = (
+  id
+) => {
   const orders =
-    read(ordersFile);
+    read(
+      ordersFile
+    );
 
   const index =
     orders.findIndex(
       (order) =>
-        String(order.id) ===
+        String(
+          order.id
+        ) ===
         String(id)
     );
 
   return {
     orders,
     index,
+
     order:
       index >= 0
         ? orders[index]
@@ -145,7 +215,8 @@ const saveOrder = (
   index,
   order
 ) => {
-  orders[index] = order;
+  orders[index] =
+    order;
 
   write(
     ordersFile,
@@ -157,17 +228,24 @@ const splitPhone = (
   phone
 ) => {
   let numbers =
-    onlyNumbers(phone);
+    onlyNumbers(
+      phone
+    );
 
   if (
-    numbers.startsWith("55")
+    numbers.startsWith(
+      "55"
+    )
   ) {
     numbers =
       numbers.slice(2);
   }
 
   const area =
-    numbers.slice(0, 2);
+    numbers.slice(
+      0,
+      2
+    );
 
   const number =
     numbers.slice(2);
@@ -187,30 +265,68 @@ const splitPhone = (
   };
 };
 
-const buildPagBankItems = (
+const buildCustomer = (
   order
 ) => {
-  return (
-    order.items || []
-  ).map((item) => ({
-    reference_id:
-      String(item.id),
-
+  const customer = {
     name:
-      String(item.name)
-        .slice(0, 100),
+      order.customer_name,
 
-    quantity:
-      Number(
-        item.quantity
-      ),
+    email:
+      order.email,
 
-    unit_amount:
-      Number(
-        item.unit_price
+    tax_id:
+      onlyNumbers(
+        order.cpf
       ),
-  }));
+  };
+
+  const phone =
+    splitPhone(
+      order.phone
+    );
+
+  if (phone) {
+    customer.phones = [
+      phone,
+    ];
+  }
+
+  return customer;
 };
+
+const buildPagBankItems = (
+  order
+) =>
+  (
+    order.items ||
+    []
+  ).map(
+    (item) => ({
+      reference_id:
+        String(
+          item.id
+        ),
+
+      name:
+        String(
+          item.name
+        ).slice(
+          0,
+          100
+        ),
+
+      quantity:
+        Number(
+          item.quantity
+        ),
+
+      unit_amount:
+        Number(
+          item.unit_price
+        ),
+    })
+  );
 
 const buildShipping = (
   order
@@ -262,44 +378,20 @@ const buildShipping = (
   };
 };
 
-const buildCustomer = (
-  order
-) => {
-  const customer = {
-    name:
-      order.customer_name,
-
-    email:
-      order.email,
-
-    tax_id:
-      onlyNumbers(
-        order.cpf
-      ),
-  };
-
-  const phone =
-    splitPhone(
-      order.phone
-    );
-
-  if (phone) {
-    customer.phones = [
-      phone,
-    ];
-  }
-
-  return customer;
-};
+/* =========================================================
+   REQUEST PAGBANK
+========================================================= */
 
 const pagBankRequest =
   async (
     endpoint,
     options = {}
   ) => {
-    if (!PAGBANK_TOKEN) {
+    if (
+      !PAGBANK_TOKEN
+    ) {
       throw new Error(
-        "PAGBANK_TOKEN não configurado no servidor."
+        "PAGBANK_TOKEN não configurado."
       );
     }
 
@@ -336,7 +428,9 @@ const pagBankRequest =
     try {
       result =
         text
-          ? JSON.parse(text)
+          ? JSON.parse(
+              text
+            )
           : {};
     } catch {
       result = {
@@ -344,7 +438,9 @@ const pagBankRequest =
       };
     }
 
-    if (!response.ok) {
+    if (
+      !response.ok
+    ) {
       console.error(
         "Erro PagBank:",
         response.status,
@@ -380,6 +476,78 @@ const pagBankRequest =
   };
 
 /* =========================================================
+   ESTOQUE
+========================================================= */
+
+const decrementStockForOrder = (
+  order
+) => {
+  if (
+    order.stock_decremented
+  ) {
+    return order;
+  }
+
+  const products =
+    read(
+      productsFile
+    );
+
+  for (
+    const item of
+    order.items || []
+  ) {
+    const index =
+      products.findIndex(
+        (product) =>
+          String(
+            product.id
+          ) ===
+          String(
+            item.id
+          )
+      );
+
+    if (
+      index < 0
+    ) {
+      continue;
+    }
+
+    const currentStock =
+      Number(
+        products[index]
+          .stock || 0
+      );
+
+    const quantity =
+      Number(
+        item.quantity ||
+        0
+      );
+
+    products[index].stock =
+      Math.max(
+        0,
+        currentStock -
+          quantity
+      );
+  }
+
+  write(
+    productsFile,
+    products
+  );
+
+  return {
+    ...order,
+
+    stock_decremented:
+      true,
+  };
+};
+
+/* =========================================================
    LOGIN ADMIN
 ========================================================= */
 
@@ -413,7 +581,9 @@ function auth(
     ).toString();
 
   const separator =
-    decoded.indexOf(":");
+    decoded.indexOf(
+      ":"
+    );
 
   const user =
     decoded.slice(
@@ -427,7 +597,8 @@ function auth(
     );
 
   const adminUser =
-    process.env.ADMIN_USER ||
+    process.env
+      .ADMIN_USER ||
     "admin";
 
   const adminPassword =
@@ -436,7 +607,8 @@ function auth(
     "troque-esta-senha";
 
   if (
-    user !== adminUser ||
+    user !==
+      adminUser ||
     password !==
       adminPassword
   ) {
@@ -489,12 +661,15 @@ const upload =
   });
 
 /* =========================================================
-   PRODUTOS
+   PRODUTOS PÚBLICOS
 ========================================================= */
 
 app.get(
   "/api/products",
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     const products =
       read(
         productsFile
@@ -509,10 +684,17 @@ app.get(
   }
 );
 
+/* =========================================================
+   PRODUTOS ADMIN
+========================================================= */
+
 app.get(
   "/api/admin/products",
   auth,
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     res.json(
       read(
         productsFile
@@ -521,17 +703,28 @@ app.get(
   }
 );
 
+/* =========================================================
+   UPLOAD FOTO
+========================================================= */
+
 app.post(
   "/api/upload",
   auth,
-  upload.single("image"),
-  (req, res) => {
-    if (!req.file) {
+  upload.single(
+    "image"
+  ),
+  (
+    req,
+    res
+  ) => {
+    if (
+      !req.file
+    ) {
       return res
         .status(400)
         .json({
           error:
-            "Imagem não enviada",
+            "Imagem não enviada.",
         });
     }
 
@@ -543,10 +736,17 @@ app.post(
   }
 );
 
+/* =========================================================
+   CADASTRAR PRODUTO
+========================================================= */
+
 app.post(
   "/api/admin/products",
   auth,
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     const products =
       read(
         productsFile
@@ -560,33 +760,64 @@ app.post(
         ? Math.max(
             ...products.map(
               (product) =>
-                product.id
+                Number(
+                  product.id
+                )
             )
           ) + 1
         : 1;
 
-    products.unshift({
+    const stock =
+      Math.max(
+        0,
+        Number(
+          body.stock ||
+          0
+        )
+      );
+
+    const product = {
       id,
 
-      ...body,
+      name:
+        body.name ||
+        "",
+
+      description:
+        body.description ||
+        "",
 
       price:
         Math.round(
           Number(
-            body.price
+            body.price ||
+            0
           ) * 100
         ),
 
-      stock:
-        Number(
-          body.stock || 0
-        ),
+      stock,
+
+      sizes:
+        body.sizes ||
+        "",
+
+      colors:
+        body.colors ||
+        "",
+
+      image:
+        body.image ||
+        "",
 
       active:
         body.active
           ? 1
           : 0,
-    });
+    };
+
+    products.unshift(
+      product
+    );
 
     write(
       productsFile,
@@ -595,14 +826,22 @@ app.post(
 
     res.json({
       id,
+      stock,
     });
   }
 );
 
+/* =========================================================
+   EDITAR PRODUTO
+========================================================= */
+
 app.put(
   "/api/admin/products/:id",
   auth,
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     const products =
       read(
         productsFile
@@ -611,35 +850,89 @@ app.put(
     const index =
       products.findIndex(
         (product) =>
-          product.id ==
-          req.params.id
+          String(
+            product.id
+          ) ===
+          String(
+            req.params.id
+          )
       );
 
-    if (index < 0) {
+    if (
+      index < 0
+    ) {
       return res
         .status(404)
         .json({
           error:
-            "Produto não encontrado",
+            "Produto não encontrado.",
         });
     }
 
-    products[index] = {
-      ...products[index],
+    const current =
+      products[index];
 
-      ...req.body,
+    let stock =
+      Number(
+        current.stock ||
+        0
+      );
 
-      price:
-        Math.round(
+    if (
+      req.body.stock !==
+        undefined &&
+      req.body.stock !==
+        null &&
+      req.body.stock !==
+        ""
+    ) {
+      stock =
+        Math.max(
+          0,
           Number(
-            req.body.price
-          ) * 100
-        ),
+            req.body.stock
+          )
+        );
+    }
 
-      stock:
-        Number(
-          req.body.stock || 0
-        ),
+    const price =
+      req.body.price !==
+      undefined
+        ? Math.round(
+            Number(
+              req.body.price ||
+              0
+            ) * 100
+          )
+        : current.price;
+
+    products[index] = {
+      ...current,
+
+      name:
+        req.body.name ??
+        current.name,
+
+      description:
+        req.body
+          .description ??
+        current.description,
+
+      price,
+
+      stock,
+
+      sizes:
+        req.body.sizes ??
+        current.sizes,
+
+      colors:
+        req.body.colors ??
+        current.colors,
+
+      image:
+        req.body.image ??
+        current.image,
 
       active:
         req.body.active
@@ -654,27 +947,41 @@ app.put(
 
     res.json({
       ok: true,
+      stock,
     });
   }
 );
 
+/* =========================================================
+   EXCLUIR PRODUTO
+========================================================= */
+
 app.delete(
   "/api/admin/products/:id",
   auth,
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     const products =
       read(
         productsFile
       );
 
-    write(
-      productsFile,
-
+    const filtered =
       products.filter(
         (product) =>
-          product.id !=
-          req.params.id
-      )
+          String(
+            product.id
+          ) !==
+          String(
+            req.params.id
+          )
+      );
+
+    write(
+      productsFile,
+      filtered
     );
 
     res.json({
@@ -690,7 +997,10 @@ app.delete(
 app.get(
   "/api/orders",
   auth,
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     res.json(
       read(
         ordersFile
@@ -705,7 +1015,10 @@ app.get(
 
 app.post(
   "/api/checkout",
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     const {
       customer,
       items,
@@ -723,7 +1036,7 @@ app.post(
         .status(400)
         .json({
           error:
-            "Dados incompletos",
+            "Dados incompletos.",
         });
     }
 
@@ -733,7 +1046,8 @@ app.post(
       );
 
     if (
-      cpf.length !== 11
+      cpf.length !==
+      11
     ) {
       return res
         .status(400)
@@ -745,9 +1059,10 @@ app.post(
 
     const allowedDelivery =
       [
-        "hey_beauty",
-        "customer_motoboy",
-        "national",
+        "salvador",
+        "lauro",
+        "uber_99",
+        "nuvem_envio",
       ];
 
     if (
@@ -759,7 +1074,7 @@ app.post(
         .status(400)
         .json({
           error:
-            "Forma de entrega inválida",
+            "Forma de entrega inválida.",
         });
     }
 
@@ -778,8 +1093,12 @@ app.post(
       const product =
         products.find(
           (product) =>
-            product.id ==
-              item.id &&
+            String(
+              product.id
+            ) ===
+              String(
+                item.id
+              ) &&
             product.active
         );
 
@@ -789,21 +1108,36 @@ app.post(
         );
 
       if (
-        !product ||
-        quantity < 1 ||
-        quantity >
-          product.stock
+        !product
       ) {
         return res
           .status(400)
           .json({
             error:
-              "Produto sem estoque ou inválido",
+              "Produto inválido.",
+          });
+      }
+
+      if (
+        quantity < 1 ||
+        quantity >
+          Number(
+            product.stock ||
+            0
+          )
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              `Estoque insuficiente para ${product.name}. Disponível: ${product.stock}.`,
           });
       }
 
       subtotal +=
-        product.price *
+        Number(
+          product.price
+        ) *
         quantity;
 
       details.push({
@@ -816,7 +1150,9 @@ app.post(
         quantity,
 
         unit_price:
-          product.price,
+          Number(
+            product.price
+          ),
 
         size:
           item.size ||
@@ -828,38 +1164,27 @@ app.post(
       });
     }
 
-    let shippingFee = 0;
+    let shippingFee = null;
 
     let shippingStatus =
-      "calculated";
+      "pending_quote";
 
     if (
       delivery.method ===
-      "hey_beauty"
+        "salvador" ||
+      delivery.method ===
+        "lauro"
     ) {
       shippingFee =
-        LOCAL_SHIPPING;
-    }
-
-    if (
-      delivery.method ===
-      "customer_motoboy"
-    ) {
-      shippingFee = 0;
-    }
-
-    if (
-      delivery.method ===
-      "national"
-    ) {
-      shippingFee = null;
+        FIXED_SHIPPING;
 
       shippingStatus =
-        "pending_quote";
+        "calculated";
     }
 
     const total =
-      shippingFee === null
+      shippingFee ===
+      null
         ? null
         : subtotal +
           shippingFee;
@@ -874,7 +1199,9 @@ app.post(
         ? Math.max(
             ...orders.map(
               (order) =>
-                order.id
+                Number(
+                  order.id
+                )
             )
           ) + 1
         : 1;
@@ -951,6 +1278,9 @@ app.post(
       payment_method:
         null,
 
+      stock_decremented:
+        false,
+
       pagbank_order_id:
         null,
 
@@ -962,7 +1292,9 @@ app.post(
           .toISOString(),
     };
 
-    orders.push(order);
+    orders.push(
+      order
+    );
 
     write(
       ordersFile,
@@ -988,67 +1320,50 @@ app.post(
 );
 
 /* =========================================================
-   PAGBANK - CARTÃO
+   PARCELAS / JUROS
 ========================================================= */
 
-app.post(
-  "/api/pagbank/card",
+app.get(
+  "/api/pagbank/installments",
   async (
     req,
     res
   ) => {
     try {
-      const {
-        orderId,
-        installments,
-        encryptedCard,
-        holder,
-      } = req.body;
+      const orderId =
+        req.query.orderId;
 
-      if (
-        !orderId ||
-        !encryptedCard ||
-        !holder?.name ||
-        !holder?.taxId
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Dados do cartão incompletos.",
-          });
-      }
-
-      const parcelCount =
-        Number(
-          installments
+      const bin =
+        onlyNumbers(
+          req.query.bin
+        ).slice(
+          0,
+          6
         );
 
       if (
-        !Number.isInteger(
-          parcelCount
-        ) ||
-        parcelCount < 1 ||
-        parcelCount > 12
+        !orderId ||
+        bin.length !==
+          6
       ) {
         return res
           .status(400)
           .json({
             error:
-              "Parcelamento inválido.",
+              "Informe o pedido e os 6 primeiros números do cartão.",
           });
       }
 
       const {
-        orders,
-        index,
         order,
       } =
         findOrder(
           orderId
         );
 
-      if (!order) {
+      if (
+        !order
+      ) {
         return res
           .status(404)
           .json({
@@ -1058,248 +1373,101 @@ app.post(
       }
 
       if (
-        order.shipping_status ===
-        "pending_quote" ||
-        order.total == null
+        order.total ==
+        null
       ) {
         return res
           .status(400)
           .json({
             error:
-              "O frete nacional precisa ser definido antes do pagamento.",
+              "Defina o frete antes do pagamento.",
           });
       }
 
-      if (
-        !order.cpf
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "CPF do cliente não encontrado.",
-          });
-      }
+      const query =
+        new URLSearchParams({
+          payment_methods:
+            "CREDIT_CARD",
 
-      if (
-        order.payment_status ===
-        "paid"
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Este pedido já foi pago.",
-          });
-      }
+          value:
+            String(
+              order.total
+            ),
 
-      const payload = {
-        reference_id:
-          `HEY-BEAUTY-${order.id}`,
+          max_installments:
+            "12",
 
-        customer:
-          buildCustomer(
-            order
-          ),
+          max_installments_no_interest:
+            "1",
 
-        items:
-          buildPagBankItems(
-            order
-          ),
+          credit_card_bin:
+            bin,
+        });
 
-        charges: [
-          {
-            reference_id:
-              `HEY-BEAUTY-CHARGE-${order.id}`,
-
-            description:
-              `Pedido Hey Beauty #${order.id}`,
-
-            amount: {
-              value:
-                Number(
-                  order.total
-                ),
-
-              currency:
-                "BRL",
-            },
-
-            payment_method: {
-              type:
-                "CREDIT_CARD",
-
-              installments:
-                parcelCount,
-
-              capture:
-                true,
-
-              card: {
-                encrypted:
-                  encryptedCard,
-
-                store:
-                  false,
-              },
-
-              holder: {
-                name:
-                  holder.name,
-
-                tax_id:
-                  onlyNumbers(
-                    holder.taxId
-                  ),
-              },
-            },
-          },
-        ],
-      };
-
-      const shipping =
-        buildShipping(
-          order
-        );
-
-      if (shipping) {
-        payload.shipping =
-          shipping;
-      }
-
-      const pagbank =
+      const result =
         await pagBankRequest(
-          "/orders",
+          "/charges/fees/calculate?" +
+            query.toString(),
           {
             method:
-              "POST",
-
-            headers: {
-              "x-idempotency-key":
-                crypto.randomUUID(),
-            },
-
-            body:
-              JSON.stringify(
-                payload
-              ),
+              "GET",
           }
         );
 
-      const charge =
-        pagbank
-          ?.charges?.[0];
+      const creditCard =
+        result
+          ?.payment_methods
+          ?.credit_card ||
+        {};
 
-      const status =
-        charge?.status ||
-        "UNKNOWN";
+      const brand =
+        Object.keys(
+          creditCard
+        )[0];
 
-      const updatedOrder = {
-        ...order,
-
-        payment_method:
-          "credit_card",
-
-        payment_status:
-          status === "PAID"
-            ? "paid"
-            : String(
-                status
-              ).toLowerCase(),
-
-        installments:
-          parcelCount,
-
-        pagbank_order_id:
-          pagbank.id ||
-          null,
-
-        pagbank_charge_id:
-          charge?.id ||
-          null,
-
-        pagbank_payment_response:
-          charge
-            ?.payment_response ||
-          null,
-
-        updated_at:
-          new Date()
-            .toISOString(),
-      };
-
-      saveOrder(
-        orders,
-        index,
-        updatedOrder
-      );
+      const plans =
+        brand
+          ? creditCard[
+              brand
+            ]
+              ?.installment_plans ||
+            []
+          : [];
 
       res.json({
-        ok: true,
+        brand,
 
-        orderId:
-          order.id,
-
-        pagbankOrderId:
-          pagbank.id,
-
-        chargeId:
-          charge?.id,
-
-        status,
-
-        message:
-          charge
-            ?.payment_response
-            ?.message ||
-          (
-            status === "PAID"
-              ? "Pagamento aprovado."
-              : "Pagamento enviado para análise."
+        plans:
+          plans.filter(
+            (plan) =>
+              Number(
+                plan.installments
+              ) <= 12
           ),
-
-        brand:
-          charge
-            ?.payment_method
-            ?.card
-            ?.brand ||
-          null,
-
-        lastDigits:
-          charge
-            ?.payment_method
-            ?.card
-            ?.last_digits ||
-          null,
       });
-
     } catch (error) {
       console.error(
-        "Erro cartão PagBank:",
+        "Erro parcelas:",
         error.pagbank ||
-        error
+          error
       );
 
       res
         .status(
           error.status ||
-          500
+            500
         )
         .json({
           error:
             error.message ||
-            "Erro ao processar cartão.",
-
-          details:
-            error.pagbank ||
-            undefined,
+            "Erro ao calcular parcelas.",
         });
     }
   }
 );
 
 /* =========================================================
-   PAGBANK - PIX
+   PIX
 ========================================================= */
 
 app.post(
@@ -1313,15 +1481,6 @@ app.post(
         orderId,
       } = req.body;
 
-      if (!orderId) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Pedido não informado.",
-          });
-      }
-
       const {
         orders,
         index,
@@ -1331,7 +1490,9 @@ app.post(
           orderId
         );
 
-      if (!order) {
+      if (
+        !order
+      ) {
         return res
           .status(404)
           .json({
@@ -1341,26 +1502,14 @@ app.post(
       }
 
       if (
-        order.shipping_status ===
-        "pending_quote" ||
-        order.total == null
+        order.total ==
+        null
       ) {
         return res
           .status(400)
           .json({
             error:
-              "O frete nacional precisa ser definido antes do pagamento.",
-          });
-      }
-
-      if (
-        !order.cpf
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "CPF do cliente não encontrado.",
+              "Defina o valor do frete antes de gerar o Pix.",
           });
       }
 
@@ -1413,6 +1562,10 @@ app.post(
                 .toISOString(),
           },
         ],
+
+        notification_urls: [
+          `${PUBLIC_URL}/api/pagbank/webhook`,
+        ],
       };
 
       const shipping =
@@ -1420,7 +1573,9 @@ app.post(
           order
         );
 
-      if (shipping) {
+      if (
+        shipping
+      ) {
         payload.shipping =
           shipping;
       }
@@ -1455,6 +1610,44 @@ app.post(
             "image/png"
         );
 
+      const textLink =
+        qr?.links?.find(
+          (link) =>
+            link.media ===
+            "text/plain"
+        );
+
+      let qrText =
+        qr?.text ||
+        null;
+
+      if (
+        !qrText &&
+        textLink?.href
+      ) {
+        try {
+          const textResponse =
+            await fetch(
+              textLink.href
+            );
+
+          if (
+            textResponse.ok
+          ) {
+            qrText =
+              await textResponse
+                .text();
+          }
+        } catch (
+          textError
+        ) {
+          console.error(
+            "Erro ao obter Pix copia e cola:",
+            textError
+          );
+        }
+      }
+
       const updatedOrder = {
         ...order,
 
@@ -1468,13 +1661,8 @@ app.post(
           pagbank.id ||
           null,
 
-        pagbank_qr_code_id:
-          qr?.id ||
-          null,
-
         pagbank_qr_code:
-          qr?.text ||
-          null,
+          qrText,
 
         pagbank_qr_code_image:
           imageLink?.href ||
@@ -1502,15 +1690,11 @@ app.post(
         orderId:
           order.id,
 
-        pagbankOrderId:
-          pagbank.id,
-
         status:
           "WAITING_PAYMENT",
 
         qrCode:
-          qr?.text ||
-          null,
+          qrText,
 
         qrCodeImage:
           imageLink?.href ||
@@ -1524,27 +1708,421 @@ app.post(
         message:
           "Pix gerado com sucesso.",
       });
-
     } catch (error) {
       console.error(
         "Erro Pix PagBank:",
         error.pagbank ||
-        error
+          error
       );
 
       res
         .status(
           error.status ||
-          500
+            500
         )
         .json({
           error:
             error.message ||
             "Erro ao gerar Pix.",
+        });
+    }
+  }
+);
 
-          details:
-            error.pagbank ||
-            undefined,
+/* =========================================================
+   CARTÃO
+========================================================= */
+
+app.post(
+  "/api/pagbank/card",
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const {
+        orderId,
+        installments,
+        encryptedCard,
+        holder,
+        bin,
+      } = req.body;
+
+      if (
+        !orderId ||
+        !encryptedCard ||
+        !holder?.name ||
+        !holder?.taxId
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Dados do cartão incompletos.",
+          });
+      }
+
+      const {
+        orders,
+        index,
+        order,
+      } =
+        findOrder(
+          orderId
+        );
+
+      if (
+        !order
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Pedido não encontrado.",
+          });
+      }
+
+      if (
+        order.total ==
+        null
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Defina o frete antes do pagamento.",
+          });
+      }
+
+      if (
+        order.payment_status ===
+        "paid"
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Este pedido já foi pago.",
+          });
+      }
+
+      const installmentCount =
+        Math.min(
+          12,
+          Math.max(
+            1,
+            Number(
+              installments
+            )
+          )
+        );
+
+      const cleanBin =
+        onlyNumbers(
+          bin
+        ).slice(
+          0,
+          6
+        );
+
+      if (
+        cleanBin.length !==
+        6
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Cartão inválido.",
+          });
+      }
+
+      const feeQuery =
+        new URLSearchParams({
+          payment_methods:
+            "CREDIT_CARD",
+
+          value:
+            String(
+              order.total
+            ),
+
+          max_installments:
+            "12",
+
+          max_installments_no_interest:
+            "1",
+
+          credit_card_bin:
+            cleanBin,
+        });
+
+      const feesResult =
+        await pagBankRequest(
+          "/charges/fees/calculate?" +
+            feeQuery.toString(),
+          {
+            method:
+              "GET",
+          }
+        );
+
+      const creditCard =
+        feesResult
+          ?.payment_methods
+          ?.credit_card ||
+        {};
+
+      const brand =
+        Object.keys(
+          creditCard
+        )[0];
+
+      const plans =
+        brand
+          ? creditCard[
+              brand
+            ]
+              ?.installment_plans ||
+            []
+          : [];
+
+      const selectedPlan =
+        plans.find(
+          (plan) =>
+            Number(
+              plan.installments
+            ) ===
+            installmentCount
+        );
+
+      if (
+        !selectedPlan
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Parcelamento não disponível para este cartão.",
+          });
+      }
+
+      const chargeAmount =
+        Number(
+          selectedPlan
+            ?.amount
+            ?.value ||
+            order.total
+        );
+
+      const payload = {
+        reference_id:
+          `HEY-BEAUTY-${order.id}`,
+
+        customer:
+          buildCustomer(
+            order
+          ),
+
+        items:
+          buildPagBankItems(
+            order
+          ),
+
+        notification_urls: [
+          `${PUBLIC_URL}/api/pagbank/webhook`,
+        ],
+
+        charges: [
+          {
+            reference_id:
+              `HEY-BEAUTY-CHARGE-${order.id}`,
+
+            description:
+              `Pedido Hey Beauty #${order.id}`,
+
+            amount: {
+              value:
+                chargeAmount,
+
+              currency:
+                "BRL",
+            },
+
+            payment_method: {
+              type:
+                "CREDIT_CARD",
+
+              installments:
+                installmentCount,
+
+              capture:
+                true,
+
+              card: {
+                encrypted:
+                  encryptedCard,
+
+                store:
+                  false,
+              },
+
+              holder: {
+                name:
+                  holder.name,
+
+                tax_id:
+                  onlyNumbers(
+                    holder.taxId
+                  ),
+              },
+            },
+          },
+        ],
+      };
+
+      const shipping =
+        buildShipping(
+          order
+        );
+
+      if (
+        shipping
+      ) {
+        payload.shipping =
+          shipping;
+      }
+
+      const pagbank =
+        await pagBankRequest(
+          "/orders",
+          {
+            method:
+              "POST",
+
+            headers: {
+              "x-idempotency-key":
+                crypto.randomUUID(),
+            },
+
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        );
+
+      const charge =
+        pagbank
+          ?.charges?.[0];
+
+      const status =
+        charge?.status ||
+        "UNKNOWN";
+
+      let updatedOrder = {
+        ...order,
+
+        payment_method:
+          "credit_card",
+
+        payment_status:
+          status ===
+          "PAID"
+            ? "paid"
+            : String(
+                status
+              ).toLowerCase(),
+
+        installments:
+          installmentCount,
+
+        payment_total:
+          chargeAmount,
+
+        pagbank_order_id:
+          pagbank.id ||
+          null,
+
+        pagbank_charge_id:
+          charge?.id ||
+          null,
+
+        updated_at:
+          new Date()
+            .toISOString(),
+      };
+
+      if (
+        status ===
+        "PAID"
+      ) {
+        updatedOrder =
+          decrementStockForOrder(
+            updatedOrder
+          );
+      }
+
+      saveOrder(
+        orders,
+        index,
+        updatedOrder
+      );
+
+      res.json({
+        ok: true,
+
+        status,
+
+        orderId:
+          order.id,
+
+        installments:
+          installmentCount,
+
+        installmentValue:
+          Number(
+            selectedPlan
+              ?.installment_value ||
+            0
+          ),
+
+        total:
+          chargeAmount,
+
+        interestFree:
+          Boolean(
+            selectedPlan
+              ?.interest_free
+          ),
+
+        message:
+          charge
+            ?.payment_response
+            ?.message ||
+          (
+            status ===
+            "PAID"
+              ? "Pagamento aprovado."
+              : "Pagamento enviado para análise."
+          ),
+      });
+    } catch (error) {
+      console.error(
+        "Erro cartão PagBank:",
+        error.pagbank ||
+          error
+      );
+
+      res
+        .status(
+          error.status ||
+            500
+        )
+        .json({
+          error:
+            error.message ||
+            "Erro ao processar cartão.",
         });
     }
   }
@@ -1571,43 +2149,33 @@ app.post(
         )
       );
 
-      const pagbankOrderId =
-        payload?.id;
-
-      const referenceId =
-        payload
-          ?.reference_id;
-
       const orders =
         read(
           ordersFile
         );
 
-      let index = -1;
-
-      if (
-        pagbankOrderId
-      ) {
-        index =
-          orders.findIndex(
-            (order) =>
-              order.pagbank_order_id ===
-              pagbankOrderId
-          );
-      }
+      let index =
+        orders.findIndex(
+          (order) =>
+            order.pagbank_order_id ===
+            payload?.id
+        );
 
       if (
         index < 0 &&
-        referenceId
+        payload
+          ?.reference_id
       ) {
         const match =
           String(
-            referenceId
+            payload.reference_id
           ).match(
             /(\d+)$/
           );
 
-        if (match) {
+        if (
+          match
+        ) {
           index =
             orders.findIndex(
               (order) =>
@@ -1619,27 +2187,41 @@ app.post(
         }
       }
 
-      if (index >= 0) {
-        const order =
+      if (
+        index >= 0
+      ) {
+        let order =
           orders[index];
 
         const charge =
           payload
             ?.charges?.[0];
 
-        if (charge) {
+        if (
+          charge?.status ===
+          "PAID"
+        ) {
           order.payment_status =
-            charge.status ===
-            "PAID"
-              ? "paid"
-              : String(
-                  charge.status ||
-                  "pending"
-                ).toLowerCase();
+            "paid";
 
+          order =
+            decrementStockForOrder(
+              order
+            );
+        } else if (
+          charge?.status
+        ) {
+          order.payment_status =
+            String(
+              charge.status
+            ).toLowerCase();
+        }
+
+        if (
+          charge?.id
+        ) {
           order.pagbank_charge_id =
-            charge.id ||
-            order.pagbank_charge_id;
+            charge.id;
         }
 
         order.updated_at =
@@ -1655,15 +2237,18 @@ app.post(
         );
       }
 
-      res.sendStatus(200);
-
+      res.sendStatus(
+        200
+      );
     } catch (error) {
       console.error(
         "Erro webhook:",
         error
       );
 
-      res.sendStatus(200);
+      res.sendStatus(
+        200
+      );
     }
   }
 );
@@ -1687,7 +2272,10 @@ app.use(
 
 app.get(
   "/{*splat}",
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     res.sendFile(
       path.join(
         clientDist,

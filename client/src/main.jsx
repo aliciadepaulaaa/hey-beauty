@@ -35,6 +35,9 @@ const money = (value) =>
     currency: "BRL",
   });
 
+const onlyNumbers = (value) =>
+  String(value || "").replace(/\D/g, "");
+
 const parsePrice = (value) => {
   if (typeof value === "number") {
     return value;
@@ -42,9 +45,7 @@ const parsePrice = (value) => {
 
   let text = String(value ?? "").trim();
 
-  if (!text) {
-    return 0;
-  }
+  if (!text) return 0;
 
   text = text.replace(/\s/g, "");
 
@@ -63,13 +64,8 @@ const parsePrice = (value) => {
     : 0;
 };
 
-const onlyNumbers = (value) =>
-  String(value || "").replace(/\D/g, "");
-
 const imageUrl = (image) => {
-  if (!image) {
-    return "";
-  }
+  if (!image) return "";
 
   if (
     image.startsWith("http://") ||
@@ -87,14 +83,16 @@ const api = async (url, options = {}) => {
       ? url
       : API_URL + url;
 
-  const response = await fetch(
-    finalUrl,
-    options
-  );
+  const response =
+    await fetch(
+      finalUrl,
+      options
+    );
 
-  const data = await response
-    .json()
-    .catch(() => ({}));
+  const data =
+    await response
+      .json()
+      .catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
@@ -172,9 +170,7 @@ function App() {
     useState(() => {
       try {
         return JSON.parse(
-          localStorage.getItem(
-            "cart"
-          ) || "[]"
+          localStorage.getItem("cart") || "[]"
         );
       } catch {
         return [];
@@ -218,7 +214,6 @@ function App() {
 
       return [
         ...currentCart,
-
         {
           id: product.id,
           name: product.name,
@@ -245,7 +240,6 @@ function App() {
   return (
     <>
       <header>
-
         <Link
           className="brand"
           to="/"
@@ -254,7 +248,6 @@ function App() {
         </Link>
 
         <nav>
-
           <Link to="/">
             Produtos
           </Link>
@@ -272,13 +265,10 @@ function App() {
           <Link to="/admin">
             Admin
           </Link>
-
         </nav>
-
       </header>
 
       <Routes>
-
         <Route
           path="/"
           element={<Home />}
@@ -298,9 +288,7 @@ function App() {
           element={
             <Cart
               cart={cart}
-              removeFromCart={
-                removeFromCart
-              }
+              removeFromCart={removeFromCart}
             />
           }
         />
@@ -308,7 +296,9 @@ function App() {
         <Route
           path="/checkout"
           element={
-            <Checkout cart={cart} />
+            <Checkout
+              cart={cart}
+            />
           }
         />
 
@@ -326,7 +316,6 @@ function App() {
           path="/admin"
           element={<Admin />}
         />
-
       </Routes>
     </>
   );
@@ -363,11 +352,8 @@ function Home() {
 
   return (
     <main>
-
       <section className="hero">
-
         <div>
-
           <span>
             HEY BEAUTY
           </span>
@@ -387,16 +373,13 @@ function Home() {
           >
             Ver produtos
           </a>
-
         </div>
-
       </section>
 
       <section
         id="produtos"
         className="section"
       >
-
         <h2>
           Nossos produtos
         </h2>
@@ -408,17 +391,13 @@ function Home() {
         )}
 
         <div className="grid">
-
           {products.map(
             (product) => (
-
               <article
                 className="card"
                 key={product.id}
               >
-
                 {product.image ? (
-
                   <img
                     src={imageUrl(
                       product.image
@@ -427,17 +406,13 @@ function Home() {
                       product.name
                     }
                   />
-
                 ) : (
-
                   <div className="placeholder">
                     FOTO DA PEÇA
                   </div>
-
                 )}
 
                 <div className="cardbody">
-
                   <h3>
                     {product.name}
                   </h3>
@@ -454,6 +429,11 @@ function Home() {
                     )}
                   </strong>
 
+                  <p>
+                    Estoque:{" "}
+                    {product.stock}
+                  </p>
+
                   <Link
                     className="btn full"
                     to={
@@ -463,18 +443,12 @@ function Home() {
                   >
                     Ver detalhes
                   </Link>
-
                 </div>
-
               </article>
-
             )
           )}
-
         </div>
-
       </section>
-
     </main>
   );
 }
@@ -516,23 +490,23 @@ function Product({
   useEffect(() => {
     api("/api/products")
       .then((data) => {
-        if (
-          !Array.isArray(data)
-        ) {
-          return;
-        }
-
         const found =
-          data.find(
-            (item) =>
-              item.id == id
-          );
+          Array.isArray(data)
+            ? data.find(
+                (item) =>
+                  item.id == id
+              )
+            : null;
 
         setProduct(
           found || null
         );
       })
-      .catch(console.error);
+      .catch((error) => {
+        setMessage(
+          error.message
+        );
+      });
   }, [id]);
 
   if (!product) {
@@ -544,6 +518,18 @@ function Product({
   }
 
   const add = () => {
+    if (
+      Number(
+        product.stock
+      ) <= 0
+    ) {
+      setMessage(
+        "Esta peça está sem estoque."
+      );
+
+      return;
+    }
+
     if (
       product.sizes &&
       !size
@@ -579,11 +565,8 @@ function Product({
 
   return (
     <main className="section product">
-
       <div>
-
         {product.image ? (
-
           <img
             src={imageUrl(
               product.image
@@ -592,19 +575,14 @@ function Product({
               product.name
             }
           />
-
         ) : (
-
           <div className="placeholder big">
             FOTO
           </div>
-
         )}
-
       </div>
 
       <div>
-
         <h1>
           {product.name}
         </h1>
@@ -617,6 +595,13 @@ function Product({
 
         <p>
           {product.description}
+        </p>
+
+        <p>
+          Estoque disponível:{" "}
+          <strong>
+            {product.stock}
+          </strong>
         </p>
 
         {product.sizes && (
@@ -633,7 +618,6 @@ function Product({
                 )
               }
             >
-
               <option value="">
                 Selecione
               </option>
@@ -648,7 +632,6 @@ function Product({
                     {item}
                   </option>
                 ))}
-
             </select>
           </>
         )}
@@ -667,7 +650,6 @@ function Product({
                 )
               }
             >
-
               <option value="">
                 Selecione
               </option>
@@ -682,7 +664,6 @@ function Product({
                     {item}
                   </option>
                 ))}
-
             </select>
           </>
         )}
@@ -690,8 +671,17 @@ function Product({
         <button
           className="btn full"
           onClick={add}
+          disabled={
+            Number(
+              product.stock
+            ) <= 0
+          }
         >
-          Adicionar ao carrinho
+          {Number(
+            product.stock
+          ) <= 0
+            ? "Produto esgotado"
+            : "Adicionar ao carrinho"}
         </button>
 
         {message && (
@@ -699,9 +689,7 @@ function Product({
             {message}
           </p>
         )}
-
       </div>
-
     </main>
   );
 }
@@ -725,7 +713,6 @@ function Cart({
 
   return (
     <main className="section">
-
       <h1>
         Seu carrinho
       </h1>
@@ -745,25 +732,19 @@ function Cart({
         </>
       ) : (
         <>
-
           <div className="cart">
-
             {cart.map(
               (item, index) => (
-
                 <div
                   className="cartrow"
                   key={index}
                 >
-
                   <div>
-
                     <b>
                       {item.name}
                     </b>
 
                     <small>
-
                       {item.size &&
                         `Tamanho: ${item.size} `}
 
@@ -773,9 +754,7 @@ function Cart({
                       {" · "}
 
                       {item.quantity}x
-
                     </small>
-
                   </div>
 
                   <strong>
@@ -794,12 +773,9 @@ function Cart({
                   >
                     Excluir
                   </button>
-
                 </div>
-
               )
             )}
-
           </div>
 
           <div className="total">
@@ -813,10 +789,8 @@ function Cart({
           >
             Continuar para entrega
           </Link>
-
         </>
       )}
-
     </main>
   );
 }
@@ -868,18 +842,21 @@ function Checkout({
       0
     );
 
-  const shipping =
+  const fixedDelivery =
     form.deliveryMethod ===
-    "hey_beauty"
-      ? LOCAL_SHIPPING
-      : 0;
+      "salvador" ||
+    form.deliveryMethod ===
+      "lauro";
 
-  const national =
-    form.deliveryMethod ===
-    "national";
+  const shipping =
+    fixedDelivery
+      ? LOCAL_SHIPPING
+      : null;
 
   const total =
-    subtotal + shipping;
+    shipping === null
+      ? subtotal
+      : subtotal + shipping;
 
   const updateField = (
     field,
@@ -908,10 +885,12 @@ function Checkout({
       }
 
       if (
-        onlyNumbers(form.cpf).length !== 11
+        onlyNumbers(
+          form.cpf
+        ).length !== 11
       ) {
         setMessage(
-          "Informe um CPF válido com 11 números."
+          "Informe um CPF com 11 números."
         );
 
         return;
@@ -1004,10 +983,7 @@ function Checkout({
                     method:
                       form.deliveryMethod,
 
-                    shipping:
-                      national
-                        ? null
-                        : shipping,
+                    shipping,
                   },
 
                   items:
@@ -1023,20 +999,17 @@ function Checkout({
           subtotal,
 
           shipping:
-            national
-              ? null
-              : shipping,
+            data.shippingFee,
 
           total:
-            national
-              ? subtotal
-              : total,
+            data.total,
 
           deliveryMethod:
             form.deliveryMethod,
 
           customer: {
             ...form,
+
             cpf:
               onlyNumbers(
                 form.cpf
@@ -1058,7 +1031,6 @@ function Checkout({
         setMessage(
           `Pedido #${data.orderId} criado com sucesso.`
         );
-
       } catch (error) {
         setMessage(
           error.message
@@ -1071,7 +1043,6 @@ function Checkout({
   if (!cart.length) {
     return (
       <main className="section">
-
         <h1>
           Carrinho vazio
         </h1>
@@ -1082,26 +1053,21 @@ function Checkout({
         >
           Voltar
         </Link>
-
       </main>
     );
   }
 
   return (
     <main className="section checkout">
-
       <div>
-
         <h1>
           Entrega
         </h1>
 
         {!order ? (
-
           <form
             onSubmit={submit}
           >
-
             <h3>
               Dados pessoais
             </h3>
@@ -1122,7 +1088,6 @@ function Checkout({
               required
               placeholder="CPF"
               inputMode="numeric"
-              maxLength="14"
               value={form.cpf}
               onChange={(e) =>
                 updateField(
@@ -1269,24 +1234,21 @@ function Checkout({
 
             <label
               style={{
-                display:
-                  "block",
-                padding:
-                  "18px",
+                display: "block",
+                padding: "18px",
                 border:
                   "1px solid #ddd",
                 marginBottom:
                   "12px",
               }}
             >
-
               <input
                 type="radio"
                 name="delivery"
-                value="hey_beauty"
+                value="salvador"
                 checked={
                   form.deliveryMethod ===
-                  "hey_beauty"
+                  "salvador"
                 }
                 onChange={(e) =>
                   updateField(
@@ -1299,39 +1261,32 @@ function Checkout({
               {" "}
 
               <strong>
-                Motoboy Hey Beauty —
-                R$ 15,00
+                ENTREGA FIXA - SALVADOR — R$ 15,00
               </strong>
 
               <p>
-                Entregas de segunda
-                a sábado. Rotas
-                organizadas até às
-                15h.
+                Entregas de segunda a sábado.
+                Rotas organizadas até às 15h.
               </p>
-
             </label>
 
             <label
               style={{
-                display:
-                  "block",
-                padding:
-                  "18px",
+                display: "block",
+                padding: "18px",
                 border:
                   "1px solid #ddd",
                 marginBottom:
                   "12px",
               }}
             >
-
               <input
                 type="radio"
                 name="delivery"
-                value="customer_motoboy"
+                value="lauro"
                 checked={
                   form.deliveryMethod ===
-                  "customer_motoboy"
+                  "lauro"
                 }
                 onChange={(e) =>
                   updateField(
@@ -1344,38 +1299,70 @@ function Checkout({
               {" "}
 
               <strong>
-                Solicitar meu próprio
-                motoboy
+                ENTREGA FIXA - LAURO DE FREITAS — R$ 15,00
               </strong>
 
               <p>
-                A cliente chama e
-                paga o próprio
-                entregador.
+                Entregas de segunda a sábado.
+                Rotas organizadas até às 15h.
               </p>
-
             </label>
 
             <label
               style={{
-                display:
-                  "block",
-                padding:
-                  "18px",
+                display: "block",
+                padding: "18px",
+                border:
+                  "1px solid #ddd",
+                marginBottom:
+                  "12px",
+              }}
+            >
+              <input
+                type="radio"
+                name="delivery"
+                value="uber_99"
+                checked={
+                  form.deliveryMethod ===
+                  "uber_99"
+                }
+                onChange={(e) =>
+                  updateField(
+                    "deliveryMethod",
+                    e.target.value
+                  )
+                }
+              />
+
+              {" "}
+
+              <strong>
+                Uber Flash / 99 Entrega
+              </strong>
+
+              <p>
+                Valor do frete definido pelo
+                aplicativo no momento da solicitação.
+              </p>
+            </label>
+
+            <label
+              style={{
+                display: "block",
+                padding: "18px",
                 border:
                   "1px solid #ddd",
                 marginBottom:
                   "20px",
               }}
             >
-
               <input
                 type="radio"
                 name="delivery"
-                value="national"
+                value="nuvem_envio"
                 checked={
                   form.deliveryMethod ===
-                  "national"
+                  "nuvem_envio"
                 }
                 onChange={(e) =>
                   updateField(
@@ -1388,73 +1375,79 @@ function Checkout({
               {" "}
 
               <strong>
-                Envio para todo o
-                Brasil
+                Nuvem Envio / Correios SEDEX
               </strong>
 
               <p>
-                O frete será combinado
-                antes do envio.
+                Envio para todo o Brasil.
+                Cálculo automático de frete
+                em configuração.
               </p>
-
             </label>
 
             <button
               className="btn full"
               disabled={loading}
             >
-
               {loading
                 ? "Criando pedido..."
                 : "Continuar"}
-
             </button>
-
           </form>
-
         ) : (
-
           <div className="panel">
-
             <h2>
               Pedido #{order.orderId}
             </h2>
 
             {order.deliveryMethod ===
-              "hey_beauty" && (
+              "salvador" && (
               <p>
-                Motoboy Hey Beauty —
-                R$ 15,00
+                ENTREGA FIXA - SALVADOR — R$ 15,00
               </p>
             )}
 
             {order.deliveryMethod ===
-              "customer_motoboy" && (
+              "lauro" && (
               <p>
-                Motoboy por conta da cliente.
+                ENTREGA FIXA - LAURO DE FREITAS — R$ 15,00
               </p>
             )}
 
             {order.deliveryMethod ===
-              "national" && (
+              "uber_99" && (
               <p>
-                Frete nacional a combinar.
+                Uber Flash / 99 Entrega —
+                valor definido pelo aplicativo.
               </p>
             )}
 
-            <button
-              className="btn full"
-              onClick={() =>
-                navigate(
-                  "/pagamento"
-                )
-              }
-            >
-              Continuar para pagamento
-            </button>
+            {order.deliveryMethod ===
+              "nuvem_envio" && (
+              <p>
+                Nuvem Envio / Correios SEDEX —
+                cálculo em configuração.
+              </p>
+            )}
 
+            {order.total != null ? (
+              <button
+                className="btn full"
+                onClick={() =>
+                  navigate(
+                    "/pagamento"
+                  )
+                }
+              >
+                Continuar para pagamento
+              </button>
+            ) : (
+              <p className="notice">
+                O valor da entrega precisa ser
+                definido antes do pagamento.
+              </p>
+            )}
           </div>
-
         )}
 
         {message && (
@@ -1462,20 +1455,16 @@ function Checkout({
             {message}
           </p>
         )}
-
       </div>
 
       <aside>
-
         <h3>
           Resumo
         </h3>
 
         {cart.map(
           (item, index) => (
-
             <p key={index}>
-
               <span>
                 {item.quantity}x{" "}
                 {item.name}
@@ -1487,18 +1476,15 @@ function Checkout({
                     item.quantity
                 )}
               </span>
-
             </p>
-
           )
         )}
 
         <hr />
 
         <p>
-
           <span>
-            Subtotal
+            Produtos
           </span>
 
           <span>
@@ -1506,36 +1492,27 @@ function Checkout({
               subtotal
             )}
           </span>
-
         </p>
 
         <p>
-
           <span>
             Entrega
           </span>
 
           <span>
-            {form.deliveryMethod ===
-            "hey_beauty"
+            {fixedDelivery
               ? "R$ 15,00"
-              : form.deliveryMethod ===
-                "customer_motoboy"
-              ? "R$ 0,00"
-              : form.deliveryMethod ===
-                "national"
-              ? "A combinar"
+              : form.deliveryMethod
+              ? "A definir"
               : "Selecione"}
           </span>
-
         </p>
 
-        {!national && (
+        {fixedDelivery && (
           <>
             <hr />
 
             <b>
-
               <span>
                 Total
               </span>
@@ -1545,13 +1522,10 @@ function Checkout({
                   total
                 )}
               </span>
-
             </b>
           </>
         )}
-
       </aside>
-
     </main>
   );
 }
@@ -1588,6 +1562,16 @@ function Payment({
   ] = useState(1);
 
   const [
+    installmentPlans,
+    setInstallmentPlans,
+  ] = useState([]);
+
+  const [
+    loadingPlans,
+    setLoadingPlans,
+  ] = useState(false);
+
+  const [
     loading,
     setLoading,
   ] = useState(false);
@@ -1596,6 +1580,11 @@ function Payment({
     message,
     setMessage,
   ] = useState("");
+
+  const [
+    pix,
+    setPix,
+  ] = useState(null);
 
   const [
     cardForm,
@@ -1611,15 +1600,12 @@ function Payment({
 
   useEffect(() => {
     loadPagBankSdk()
-      .catch(
-        console.error
-      );
+      .catch(console.error);
   }, []);
 
   if (!order) {
     return (
       <main className="section">
-
         <h1>
           Pedido não encontrado
         </h1>
@@ -1628,9 +1614,44 @@ function Payment({
           className="btn"
           to="/"
         >
-          Voltar
+          Voltar para a loja
         </Link>
+      </main>
+    );
+  }
 
+  if (
+    order.total == null
+  ) {
+    return (
+      <main className="section">
+        <h1>
+          Frete pendente
+        </h1>
+
+        <div className="panel">
+          <p>
+            O valor da entrega ainda precisa
+            ser definido antes do pagamento.
+          </p>
+
+          {order.deliveryMethod ===
+            "uber_99" && (
+            <p>
+              O valor do Uber Flash / 99 Entrega
+              será definido pelo aplicativo.
+            </p>
+          )}
+
+          {order.deliveryMethod ===
+            "nuvem_envio" && (
+            <p>
+              O cálculo do Nuvem Envio /
+              Correios SEDEX ainda está em
+              configuração.
+            </p>
+          )}
+        </div>
       </main>
     );
   }
@@ -1646,6 +1667,50 @@ function Payment({
       })
     );
   };
+
+  const loadInstallments =
+    async (number) => {
+      const bin =
+        onlyNumbers(
+          number
+        ).slice(0, 6);
+
+      if (
+        bin.length !== 6 ||
+        !order?.orderId
+      ) {
+        setInstallmentPlans([]);
+        return;
+      }
+
+      try {
+        setLoadingPlans(true);
+
+        const result =
+          await api(
+            `/api/pagbank/installments?orderId=${order.orderId}&bin=${bin}`
+          );
+
+        const plans =
+          result.plans || [];
+
+        setInstallmentPlans(
+          plans
+        );
+
+        if (plans.length) {
+          setInstallments(
+            plans[0].installments
+          );
+        }
+      } catch (error) {
+        setMessage(
+          error.message
+        );
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
 
   const payPix =
     async () => {
@@ -1675,23 +1740,41 @@ function Payment({
             }
           );
 
-        localStorage.setItem(
-          "lastPayment",
-          JSON.stringify(
-            result
-          )
+        setPix(
+          result
         );
 
         setMessage(
           "Pix gerado com sucesso."
         );
-
       } catch (error) {
         setMessage(
           error.message
         );
       } finally {
         setLoading(false);
+      }
+    };
+
+  const copyPix =
+    async () => {
+      if (!pix?.qrCode) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard
+          .writeText(
+            pix.qrCode
+          );
+
+        setMessage(
+          "Código Pix copiado!"
+        );
+      } catch {
+        setMessage(
+          "Não foi possível copiar automaticamente."
+        );
       }
     };
 
@@ -1718,49 +1801,50 @@ function Payment({
           await loadPagBankSdk();
         }
 
+        const cardNumber =
+          onlyNumbers(
+            cardForm.number
+          );
+
         const encrypted =
-          window.PagSeguro.encryptCard({
-            publicKey:
-              PAGBANK_PUBLIC_KEY,
+          window.PagSeguro
+            .encryptCard({
+              publicKey:
+                PAGBANK_PUBLIC_KEY,
 
-            holder:
-              cardForm.holder,
+              holder:
+                cardForm.holder,
 
-            number:
-              onlyNumbers(
-                cardForm.number
-              ),
+              number:
+                cardNumber,
 
-            expMonth:
-              onlyNumbers(
-                cardForm.expMonth
-              ),
+              expMonth:
+                onlyNumbers(
+                  cardForm.expMonth
+                ),
 
-            expYear:
-              onlyNumbers(
-                cardForm.expYear
-              ),
+              expYear:
+                onlyNumbers(
+                  cardForm.expYear
+                ),
 
-            securityCode:
-              onlyNumbers(
-                cardForm.securityCode
-              ),
-          });
+              securityCode:
+                onlyNumbers(
+                  cardForm.securityCode
+                ),
+            });
 
         if (
           encrypted.hasErrors
         ) {
-          const errorText =
+          throw new Error(
             encrypted.errors
               ?.map(
                 (error) =>
                   error.message ||
                   error.code
               )
-              .join(", ");
-
-          throw new Error(
-            errorText ||
+              .join(", ") ||
             "Dados do cartão inválidos."
           );
         }
@@ -1783,8 +1867,15 @@ function Payment({
 
                   installments,
 
+                  bin:
+                    cardNumber.slice(
+                      0,
+                      6
+                    ),
+
                   encryptedCard:
-                    encrypted.encryptedCard,
+                    encrypted
+                      .encryptedCard,
 
                   holder: {
                     name:
@@ -1798,13 +1889,6 @@ function Payment({
                 }),
             }
           );
-
-        localStorage.setItem(
-          "lastPayment",
-          JSON.stringify(
-            result
-          )
-        );
 
         setMessage(
           result.message ||
@@ -1820,8 +1904,11 @@ function Payment({
           localStorage.removeItem(
             "paymentOrder"
           );
-        }
 
+          setMessage(
+            "Pagamento aprovado! Pedido confirmado."
+          );
+        }
       } catch (error) {
         setMessage(
           error.message
@@ -1833,15 +1920,12 @@ function Payment({
 
   return (
     <main className="section checkout">
-
       <div>
-
         <h1>
           Pagamento
         </h1>
 
         <div className="panel">
-
           <h2>
             Pedido #{order.orderId}
           </h2>
@@ -1852,17 +1936,14 @@ function Payment({
 
           <label
             style={{
-              display:
-                "block",
-              padding:
-                "18px",
+              display: "block",
+              padding: "18px",
               border:
                 "1px solid #ddd",
               marginBottom:
                 "12px",
             }}
           >
-
             <input
               type="radio"
               name="payment"
@@ -1871,11 +1952,13 @@ function Payment({
                 paymentMethod ===
                 "pix"
               }
-              onChange={(e) =>
+              onChange={() => {
                 setPaymentMethod(
-                  e.target.value
-                )
-              }
+                  "pix"
+                );
+
+                setPix(null);
+              }}
             />
 
             {" "}
@@ -1887,22 +1970,18 @@ function Payment({
             <p>
               Pagamento à vista.
             </p>
-
           </label>
 
           <label
             style={{
-              display:
-                "block",
-              padding:
-                "18px",
+              display: "block",
+              padding: "18px",
               border:
                 "1px solid #ddd",
               marginBottom:
                 "20px",
             }}
           >
-
             <input
               type="radio"
               name="payment"
@@ -1911,11 +1990,13 @@ function Payment({
                 paymentMethod ===
                 "credit"
               }
-              onChange={(e) =>
+              onChange={() => {
                 setPaymentMethod(
-                  e.target.value
-                )
-              }
+                  "credit"
+                );
+
+                setPix(null);
+              }}
             />
 
             {" "}
@@ -1925,22 +2006,112 @@ function Payment({
             </strong>
 
             <p>
-              Parcelamento em até
-              12x.
+              Parcelamento em até 12x.
             </p>
-
           </label>
+
+          {paymentMethod ===
+            "pix" && (
+            <>
+              {!pix && (
+                <button
+                  className="btn full"
+                  disabled={loading}
+                  onClick={payPix}
+                >
+                  {loading
+                    ? "Gerando Pix..."
+                    : `Gerar Pix de ${money(
+                        order.total
+                      )}`}
+                </button>
+              )}
+
+              {pix && (
+                <div
+                  style={{
+                    textAlign:
+                      "center",
+                    marginTop:
+                      "20px",
+                  }}
+                >
+                  <h3>
+                    Pague com Pix
+                  </h3>
+
+                  <strong>
+                    {money(
+                      order.total
+                    )}
+                  </strong>
+
+                  {pix.qrCodeImage && (
+                    <div>
+                      <img
+                        src={
+                          pix.qrCodeImage
+                        }
+                        alt="QR Code Pix"
+                        style={{
+                          width:
+                            "240px",
+                          maxWidth:
+                            "100%",
+                          margin:
+                            "20px auto",
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <p>
+                    Abra o aplicativo do seu banco
+                    e escaneie o QR Code.
+                  </p>
+
+                  {pix.qrCode && (
+                    <>
+                      <textarea
+                        readOnly
+                        value={
+                          pix.qrCode
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          minHeight:
+                            "100px",
+                        }}
+                      />
+
+                      <button
+                        className="btn full"
+                        onClick={
+                          copyPix
+                        }
+                      >
+                        Copiar código Pix
+                      </button>
+                    </>
+                  )}
+
+                  <p>
+                    Aguardando pagamento...
+                  </p>
+                </div>
+              )}
+            </>
+          )}
 
           {paymentMethod ===
             "credit" && (
             <div>
-
               <h3>
                 Dados do cartão
               </h3>
 
               <input
-                required
                 placeholder="Nome impresso no cartão"
                 value={
                   cardForm.holder
@@ -1954,7 +2125,6 @@ function Payment({
               />
 
               <input
-                required
                 placeholder="CPF do titular"
                 inputMode="numeric"
                 value={
@@ -1969,38 +2139,36 @@ function Payment({
               />
 
               <input
-                required
                 placeholder="Número do cartão"
                 inputMode="numeric"
                 autoComplete="cc-number"
-                maxLength="23"
                 value={
                   cardForm.number
                 }
-                onChange={(e) =>
+                onChange={(e) => {
                   updateCard(
                     "number",
                     e.target.value
-                  )
-                }
+                  );
+
+                  loadInstallments(
+                    e.target.value
+                  );
+                }}
               />
 
               <div
                 style={{
-                  display:
-                    "grid",
+                  display: "grid",
                   gridTemplateColumns:
                     "1fr 1fr 1fr",
                   gap: "10px",
                 }}
               >
-
                 <input
-                  required
                   placeholder="Mês"
-                  inputMode="numeric"
                   maxLength="2"
-                  autoComplete="cc-exp-month"
+                  inputMode="numeric"
                   value={
                     cardForm.expMonth
                   }
@@ -2013,11 +2181,9 @@ function Payment({
                 />
 
                 <input
-                  required
                   placeholder="Ano"
-                  inputMode="numeric"
                   maxLength="4"
-                  autoComplete="cc-exp-year"
+                  inputMode="numeric"
                   value={
                     cardForm.expYear
                   }
@@ -2030,12 +2196,10 @@ function Payment({
                 />
 
                 <input
-                  required
                   type="password"
                   placeholder="CVV"
-                  inputMode="numeric"
                   maxLength="4"
-                  autoComplete="cc-csc"
+                  inputMode="numeric"
                   value={
                     cardForm.securityCode
                   }
@@ -2046,93 +2210,78 @@ function Payment({
                     )
                   }
                 />
-
               </div>
 
-              <label
-                style={{
-                  display:
-                    "block",
-                  marginTop:
-                    "18px",
-                }}
-              >
+              <label>
                 Parcelamento
               </label>
 
-              <select
-                value={
-                  installments
-                }
-                onChange={(e) =>
-                  setInstallments(
-                    Number(
-                      e.target.value
+              {loadingPlans ? (
+                <p>
+                  Calculando parcelas...
+                </p>
+              ) : (
+                <select
+                  value={
+                    installments
+                  }
+                  onChange={(e) =>
+                    setInstallments(
+                      Number(
+                        e.target.value
+                      )
                     )
-                  )
-                }
-              >
-
-                {Array.from(
-                  {
-                    length: 12,
-                  },
-                  (_, index) =>
-                    index + 1
-                ).map(
-                  (number) => (
-
-                    <option
-                      key={
-                        number
-                      }
-                      value={
-                        number
-                      }
-                    >
-                      {number}x
+                  }
+                >
+                  {!installmentPlans.length && (
+                    <option value="1">
+                      Digite o número do cartão
                     </option>
+                  )}
 
-                  )
-                )}
-
-              </select>
-
-              <p>
-                O valor final e os
-                juros das parcelas
-                serão confirmados
-                pelo PagBank.
-              </p>
+                  {installmentPlans.map(
+                    (plan) => (
+                      <option
+                        key={
+                          plan.installments
+                        }
+                        value={
+                          plan.installments
+                        }
+                      >
+                        {plan.installments}x de{" "}
+                        {money(
+                          plan.installment_value
+                        )}
+                        {" — "}
+                        {plan.interest_free
+                          ? "sem juros"
+                          : `total ${money(
+                              plan.amount
+                                ?.value
+                            )}`}
+                      </option>
+                    )
+                  )}
+                </select>
+              )}
 
               <button
                 className="btn full"
-                disabled={loading}
-                onClick={payCard}
+                disabled={
+                  loading ||
+                  !installmentPlans.length
+                }
+                onClick={
+                  payCard
+                }
               >
                 {loading
                   ? "Processando..."
-                  : `Pagar ${money(
-                      order.total
-                    )}`}
+                  : "Finalizar pagamento"}
               </button>
-
             </div>
           )}
-
-          {paymentMethod ===
-            "pix" && (
-            <button
-              className="btn full"
-              disabled={loading}
-              onClick={payPix}
-            >
-              {loading
-                ? "Gerando Pix..."
-                : "Gerar Pix"}
-            </button>
-          )}
-
         </div>
 
         {message && (
@@ -2140,20 +2289,16 @@ function Payment({
             {message}
           </p>
         )}
-
       </div>
 
       <aside>
-
         <h3>
           Resumo
         </h3>
 
         {cart.map(
           (item, index) => (
-
             <p key={index}>
-
               <span>
                 {item.quantity}x{" "}
                 {item.name}
@@ -2165,16 +2310,13 @@ function Payment({
                     item.quantity
                 )}
               </span>
-
             </p>
-
           )
         )}
 
         <hr />
 
         <p>
-
           <span>
             Produtos
           </span>
@@ -2184,50 +2326,36 @@ function Payment({
               order.subtotal
             )}
           </span>
-
         </p>
 
         <p>
-
           <span>
             Entrega
           </span>
 
           <span>
-            {order.deliveryMethod ===
-            "hey_beauty"
-              ? "R$ 15,00"
-              : order.deliveryMethod ===
-                "customer_motoboy"
-              ? "R$ 0,00"
-              : "A combinar"}
+            {order.shipping != null
+              ? money(
+                  order.shipping
+                )
+              : "A definir"}
           </span>
-
         </p>
 
-        {order.deliveryMethod !==
-          "national" && (
-          <>
-            <hr />
+        <hr />
 
-            <b>
+        <b>
+          <span>
+            Total
+          </span>
 
-              <span>
-                Total
-              </span>
-
-              <span>
-                {money(
-                  order.total
-                )}
-              </span>
-
-            </b>
-          </>
-        )}
-
+          <span>
+            {money(
+              order.total
+            )}
+          </span>
+        </b>
       </aside>
-
     </main>
   );
 }
@@ -2246,29 +2374,39 @@ function Admin() {
     ) || ""
   );
 
-  const [products, setProducts] =
-    useState([]);
+  const [
+    products,
+    setProducts,
+  ] = useState([]);
 
-  const [orders, setOrders] =
-    useState([]);
+  const [
+    orders,
+    setOrders,
+  ] = useState([]);
 
-  const [editingId, setEditingId] =
-    useState(null);
+  const [
+    editingId,
+    setEditingId,
+  ] = useState(null);
 
-  const [message, setMessage] =
-    useState("");
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
-  const [form, setForm] =
-    useState({
-      name: "",
-      description: "",
-      price: "",
-      stock: 0,
-      sizes: "P,M,G",
-      colors: "",
-      image: "",
-      active: true,
-    });
+  const [
+    form,
+    setForm,
+  ] = useState({
+    name: "",
+    description: "",
+    price: "",
+    stock: "",
+    sizes: "P,M,G",
+    colors: "",
+    image: "",
+    active: true,
+  });
 
   const headers = () =>
     credentials
@@ -2331,21 +2469,19 @@ function Admin() {
   if (!credentials) {
     return (
       <main className="section admin">
-
         <h1>
           Painel administrativo
         </h1>
 
         <form
           onSubmit={(event) => {
-
             event.preventDefault();
 
             const encoded =
               btoa(
                 event.target.user.value +
-                ":" +
-                event.target.password.value
+                  ":" +
+                  event.target.password.value
               );
 
             localStorage.setItem(
@@ -2356,10 +2492,8 @@ function Admin() {
             setCredentials(
               encoded
             );
-
           }}
         >
-
           <input
             name="user"
             defaultValue="admin"
@@ -2375,39 +2509,33 @@ function Admin() {
           <button className="btn">
             Entrar
           </button>
-
         </form>
-
       </main>
     );
   }
 
   const resetForm = () => {
-
     setEditingId(null);
 
     setForm({
       name: "",
       description: "",
       price: "",
-      stock: 0,
+      stock: "",
       sizes: "P,M,G",
       colors: "",
       image: "",
       active: true,
     });
-
   };
 
   const uploadImage =
     async (event) => {
-
       const file =
-        event.target.files?.[0];
+        event.target
+          .files?.[0];
 
-      if (!file) {
-        return;
-      }
+      if (!file) return;
 
       const formData =
         new FormData();
@@ -2418,13 +2546,11 @@ function Admin() {
       );
 
       try {
-
         const data =
           await api(
             "/api/upload",
             {
-              method:
-                "POST",
+              method: "POST",
               headers:
                 headers(),
               body:
@@ -2443,23 +2569,18 @@ function Admin() {
         setMessage(
           "Foto enviada!"
         );
-
       } catch (error) {
-
         setMessage(
           error.message
         );
-
       }
     };
 
   const saveProduct =
     async (event) => {
-
       event.preventDefault();
 
       try {
-
         const price =
           parsePrice(
             form.price
@@ -2471,8 +2592,11 @@ function Admin() {
           price,
 
           stock:
-            Number(
-              form.stock || 0
+            Math.max(
+              0,
+              Number(
+                form.stock || 0
+              )
             ),
         };
 
@@ -2507,33 +2631,48 @@ function Admin() {
         resetForm();
 
         await loadData();
-
       } catch (error) {
-
         setMessage(
           error.message
         );
-
       }
     };
 
   const editProduct =
     (product) => {
-
       setEditingId(
         product.id
       );
 
       setForm({
-        ...product,
+        name:
+          product.name || "",
 
-        price: (
-          Number(
-            product.price || 0
-          ) / 100
-        )
-          .toFixed(2)
-          .replace(".", ","),
+        description:
+          product.description || "",
+
+        price:
+          (
+            Number(
+              product.price || 0
+            ) / 100
+          )
+            .toFixed(2)
+            .replace(".", ","),
+
+        stock:
+          String(
+            product.stock ?? 0
+          ),
+
+        sizes:
+          product.sizes || "",
+
+        colors:
+          product.colors || "",
+
+        image:
+          product.image || "",
 
         active:
           Boolean(
@@ -2543,15 +2682,12 @@ function Admin() {
 
       window.scrollTo({
         top: 0,
-        behavior:
-          "smooth",
+        behavior: "smooth",
       });
-
     };
 
   const deleteProduct =
     async (id) => {
-
       if (
         !window.confirm(
           "Excluir esta peça?"
@@ -2561,7 +2697,6 @@ function Admin() {
       }
 
       try {
-
         await api(
           `/api/admin/products/${id}`,
           {
@@ -2574,31 +2709,24 @@ function Admin() {
         );
 
         await loadData();
-
       } catch (error) {
-
         setMessage(
           error.message
         );
-
       }
     };
 
   const logout = () => {
-
     localStorage.removeItem(
       "adminCred"
     );
 
     setCredentials("");
-
   };
 
   return (
     <main className="section admin">
-
       <div className="adminhead">
-
         <h1>
           Painel HEY BEAUTY
         </h1>
@@ -2608,7 +2736,6 @@ function Admin() {
         >
           Sair
         </button>
-
       </div>
 
       <form
@@ -2617,7 +2744,6 @@ function Admin() {
           saveProduct
         }
       >
-
         <h2>
           {editingId
             ? "Editar peça"
@@ -2670,8 +2796,10 @@ function Admin() {
         />
 
         <input
+          required
           type="number"
           min="0"
+          step="1"
           placeholder="Estoque"
           value={
             form.stock
@@ -2732,10 +2860,8 @@ function Admin() {
             )}
             alt="Preview"
             style={{
-              width:
-                "180px",
-              height:
-                "220px",
+              width: "180px",
+              height: "220px",
               objectFit:
                 "cover",
               marginTop:
@@ -2758,7 +2884,6 @@ function Admin() {
             Cancelar
           </button>
         )}
-
       </form>
 
       {message && (
@@ -2772,16 +2897,13 @@ function Admin() {
       </h2>
 
       <div className="adminlist">
-
         {products.map(
           (product) => (
-
             <div
               key={
                 product.id
               }
             >
-
               {product.image && (
                 <img
                   src={imageUrl(
@@ -2806,17 +2928,12 @@ function Admin() {
               </b>
 
               <span>
-
                 {money(
                   product.price
                 )}
-
                 {" · "}
-
                 estoque{" "}
-
                 {product.stock}
-
               </span>
 
               <button
@@ -2838,12 +2955,9 @@ function Admin() {
               >
                 Excluir
               </button>
-
             </div>
-
           )
         )}
-
       </div>
 
       <h2>
@@ -2851,23 +2965,19 @@ function Admin() {
       </h2>
 
       <div className="adminlist">
-
         {orders.map(
           (order) => (
-
             <div
               key={
                 order.id
               }
             >
-
               <b>
                 Pedido #
                 {order.id}
               </b>
 
               <span>
-
                 {
                   order.customer_name
                 }
@@ -2878,17 +2988,17 @@ function Admin() {
                   ? money(
                       order.total
                     )
-                  : "Frete a combinar"}
+                  : "Frete pendente"}
 
+                {" · "}
+
+                {order.payment_status ||
+                  "pending"}
               </span>
-
             </div>
-
           )
         )}
-
       </div>
-
     </main>
   );
 }
