@@ -10,6 +10,9 @@ require("dotenv").config({
   path: path.join(__dirname, "..", ".env"),
 });
 
+/* =========================================================
+   APP / POSTGRESQL
+========================================================= */
 
 const app = express();
 
@@ -28,10 +31,18 @@ pool
     console.log("✅ PostgreSQL conectado com sucesso");
   })
   .catch((error) => {
-    console.error("❌ Erro ao conectar PostgreSQL:", error.message);
+    console.error(
+      "❌ Erro ao conectar PostgreSQL:",
+      error.message
+    );
   });
-const root =
-  path.join(__dirname, "..");
+
+const root = path.join(__dirname, "..");
+
+/* =========================================================
+   CRIAR TABELA PRODUCTS
+========================================================= */
+
 async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS products (
@@ -52,69 +63,60 @@ async function initDatabase() {
   console.log("✅ Tabela products pronta");
 }
 
-initDatabase().catch((error) => {
+const dbReady = initDatabase().catch((error) => {
   console.error(
     "❌ Erro ao criar tabelas:",
     error
   );
+
+  throw error;
 });
+
 /* =========================================================
    DADOS / ARQUIVOS
 ========================================================= */
 
-const data =
-  process.env.DATA_DIR
-    ? process.env.DATA_DIR
-    : path.join(root, "data");
+const data = process.env.DATA_DIR
+  ? process.env.DATA_DIR
+  : path.join(root, "data");
 
-const uploads =
-  process.env.DATA_DIR
-    ? path.join(
-        process.env.DATA_DIR,
-        "uploads"
-      )
-    : path.join(
-        root,
-        "uploads"
-      );
+const uploads = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, "uploads")
+  : path.join(root, "uploads");
 
-const productsFile =
-  path.join(
-    data,
-    "products.json"
-  );
+const productsFile = path.join(
+  data,
+  "products.json"
+);
 
-const ordersFile =
-  path.join(
-    data,
-    "orders.json"
-  );
+const ordersFile = path.join(
+  data,
+  "orders.json"
+);
 
 /* =========================================================
    CONFIGURAÇÕES
 ========================================================= */
 
 const FIXED_SHIPPING = 1500;
+
 const MELHOR_ENVIO_TOKEN =
   process.env.MELHOR_ENVIO_TOKEN || "";
 
-const SHIPPING_ORIGIN_CEP =
-  "42821810";
+const SHIPPING_ORIGIN_CEP = "42821810";
 
 const PAGBANK_TOKEN =
   process.env.PAGBANK_TOKEN || "";
 
 const PAGBANK_ENV =
-  process.env.PAGBANK_ENV ||
-  "sandbox";
+  process.env.PAGBANK_ENV || "sandbox";
 
 const PUBLIC_URL =
   process.env.PUBLIC_URL ||
   "https://hey-beauty.onrender.com";
 
 const PAGBANK_BASE_URL =
-  PAGBANK_ENV ===
-  "production"
+  PAGBANK_ENV === "production"
     ? "https://api.pagseguro.com"
     : "https://sandbox.api.pagseguro.com";
 
@@ -122,36 +124,22 @@ const PAGBANK_BASE_URL =
    CRIAR PASTAS
 ========================================================= */
 
-fs.mkdirSync(
-  data,
-  {
-    recursive: true,
-  }
-);
+fs.mkdirSync(data, {
+  recursive: true,
+});
 
-fs.mkdirSync(
-  uploads,
-  {
-    recursive: true,
-  }
-);
+fs.mkdirSync(uploads, {
+  recursive: true,
+});
 
-if (
-  !fs.existsSync(
-    productsFile
-  )
-) {
+if (!fs.existsSync(productsFile)) {
   fs.writeFileSync(
     productsFile,
     "[]"
   );
 }
 
-if (
-  !fs.existsSync(
-    ordersFile
-  )
-) {
+if (!fs.existsSync(ordersFile)) {
   fs.writeFileSync(
     ordersFile,
     "[]"
@@ -160,15 +148,13 @@ if (
 
 /* =========================================================
    JSON
+   Pedidos ainda usam JSON nesta etapa.
 ========================================================= */
 
 const read = (file) => {
   try {
     return JSON.parse(
-      fs.readFileSync(
-        file,
-        "utf8"
-      )
+      fs.readFileSync(file, "utf8")
     );
   } catch (error) {
     console.error(
@@ -181,10 +167,7 @@ const read = (file) => {
   }
 };
 
-const write = (
-  file,
-  value
-) => {
+const write = (file, value) => {
   fs.writeFileSync(
     file,
     JSON.stringify(
@@ -194,6 +177,121 @@ const write = (
     )
   );
 };
+
+/* =========================================================
+   MIGRAR PRODUTOS ANTIGOS PARA POSTGRESQL
+========================================================= */
+
+async function migrateProductsFromJson() {
+  await dbReady;
+
+  const countResult = await pool.query(
+    "SELECT COUNT(*)::int AS count FROM products"
+  );
+
+  if (countResult.rows[0].count > 0) {
+    console.log(
+      "✅ Produtos já estão no PostgreSQL"
+    );
+
+    return;
+  }
+
+  const legacyProducts =
+    read(productsFile);
+
+  if (!legacyProducts.length) {
+    console.log(
+      "ℹ️ Nenhum produto antigo para migrar"
+    );
+
+    return;
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    for (const product of legacyProducts) {
+      await client.query(
+        `
+        INSERT INTO products (
+          id,
+          name,
+          description,
+          price,
+          stock,
+          sizes,
+          colors,
+          image,
+          active
+        )
+        VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9
+        )
+        ON CONFLICT (id) DO NOTHING
+        `,
+        [
+          Number(product.id),
+          product.name || "",
+          product.description || "",
+          Number(product.price || 0),
+
+          Math.max(
+            0,
+            Number(product.stock || 0)
+          ),
+
+          product.sizes || "",
+          product.colors || "",
+          product.image || "",
+          Boolean(product.active),
+        ]
+      );
+    }
+
+    await client.query(`
+      SELECT setval(
+        pg_get_serial_sequence(
+          'products',
+          'id'
+        ),
+        GREATEST(
+          COALESCE(
+            (SELECT MAX(id) FROM products),
+            1
+          ),
+          1
+        ),
+        true
+      );
+    `);
+
+    await client.query("COMMIT");
+
+    console.log(
+      `✅ ${legacyProducts.length} produto(s) migrado(s) para o PostgreSQL`
+    );
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+const productsReady =
+  migrateProductsFromJson().catch(
+    (error) => {
+      console.error(
+        "❌ Erro ao migrar produtos:",
+        error
+      );
+
+      throw error;
+    }
+  );
 
 /* =========================================================
    MIDDLEWARE
@@ -209,41 +307,27 @@ app.use(
 
 app.use(
   "/uploads",
-  express.static(
-    uploads
-  )
+  express.static(uploads)
 );
 
 /* =========================================================
-   AUXILIARES
+   FUNÇÕES AUXILIARES
 ========================================================= */
 
-const onlyNumbers = (
-  value
-) =>
-  String(
-    value || ""
-  ).replace(
+const onlyNumbers = (value) =>
+  String(value || "").replace(
     /\D/g,
     ""
   );
 
-const findOrder = (
-  id
-) => {
-  const orders =
-    read(
-      ordersFile
-    );
+const findOrder = (id) => {
+  const orders = read(ordersFile);
 
-  const index =
-    orders.findIndex(
-      (order) =>
-        String(
-          order.id
-        ) ===
-        String(id)
-    );
+  const index = orders.findIndex(
+    (order) =>
+      String(order.id) ===
+      String(id)
+  );
 
   return {
     orders,
@@ -261,8 +345,7 @@ const saveOrder = (
   index,
   order
 ) => {
-  orders[index] =
-    order;
+  orders[index] = order;
 
   write(
     ordersFile,
@@ -270,28 +353,15 @@ const saveOrder = (
   );
 };
 
-const splitPhone = (
-  phone
-) => {
-  let numbers =
-    onlyNumbers(
-      phone
-    );
+const splitPhone = (phone) => {
+  let numbers = onlyNumbers(phone);
 
-  if (
-    numbers.startsWith(
-      "55"
-    )
-  ) {
-    numbers =
-      numbers.slice(2);
+  if (numbers.startsWith("55")) {
+    numbers = numbers.slice(2);
   }
 
   const area =
-    numbers.slice(
-      0,
-      2
-    );
+    numbers.slice(0, 2);
 
   const number =
     numbers.slice(2);
@@ -311,72 +381,44 @@ const splitPhone = (
   };
 };
 
-const buildCustomer = (
-  order
-) => {
+const buildCustomer = (order) => {
   const customer = {
-    name:
-      order.customer_name,
-
-    email:
-      order.email,
-
-    tax_id:
-      onlyNumbers(
-        order.cpf
-      ),
+    name: order.customer_name,
+    email: order.email,
+    tax_id: onlyNumbers(order.cpf),
   };
 
   const phone =
-    splitPhone(
-      order.phone
-    );
+    splitPhone(order.phone);
 
   if (phone) {
-    customer.phones = [
-      phone,
-    ];
+    customer.phones = [phone];
   }
 
   return customer;
 };
 
-const buildPagBankItems = (
-  order
-) =>
-  (
-    order.items ||
-    []
-  ).map(
+const buildPagBankItems = (order) =>
+  (order.items || []).map(
     (item) => ({
       reference_id:
-        String(
-          item.id
-        ),
+        String(item.id),
 
       name:
-        String(
-          item.name
-        ).slice(
+        String(item.name).slice(
           0,
           100
         ),
 
       quantity:
-        Number(
-          item.quantity
-        ),
+        Number(item.quantity),
 
       unit_amount:
-        Number(
-          item.unit_price
-        ),
+        Number(item.unit_price),
     })
   );
 
-const buildShipping = (
-  order
-) => {
+const buildShipping = (order) => {
   if (
     !order.street ||
     !order.number ||
@@ -389,399 +431,566 @@ const buildShipping = (
 
   return {
     address: {
-      street:
-        order.street,
+      street: order.street,
 
       number:
-        String(
-          order.number
-        ),
+        String(order.number),
 
       ...(order.complement
-  ? {
-      complement:
-        order.complement,
-    }
-  : {}),
+        ? {
+            complement:
+              order.complement,
+          }
+        : {}),
 
       locality:
-        order.neighborhood ||
-        "",
+        order.neighborhood || "",
 
-      city:
-        order.city,
+      city: order.city,
 
       region_code:
         String(
           order.state
         ).toUpperCase(),
 
-      country:
-        "BRA",
+      country: "BRA",
 
       postal_code:
-        onlyNumbers(
-          order.cep
-        ),
+        onlyNumbers(order.cep),
     },
   };
-};
-
-/* =========================================================
-   REQUEST PAGBANK
+};/* =========================================================
+   PAGBANK
 ========================================================= */
 
-const pagBankRequest =
-  async (
-    endpoint,
-    options = {}
-  ) => {
-    if (
-      !PAGBANK_TOKEN
-    ) {
-      throw new Error(
-        "PAGBANK_TOKEN não configurado."
-      );
-    }
-
-    const response =
-      await fetch(
-        PAGBANK_BASE_URL +
-          endpoint,
-        {
-          ...options,
-
-          headers: {
-            Authorization:
-              `Bearer ${PAGBANK_TOKEN}`,
-
-            Accept:
-              "application/json",
-
-            "Content-Type":
-              "application/json",
-
-            ...(
-              options.headers ||
-              {}
-            ),
-          },
-        }
-      );
-
-    const text =
-      await response.text();
-
-    let result = {};
-
-    try {
-      result =
-        text
-          ? JSON.parse(
-              text
-            )
-          : {};
-    } catch {
-      result = {
-        raw: text,
-      };
-    }
-
-    if (
-      !response.ok
-    ) {
-      console.error(
-        "Erro PagBank:",
-        response.status,
-        result
-      );
-
-      const description =
-        result
-          ?.error_messages?.[0]
-          ?.description ||
-        result
-          ?.error_messages?.[0]
-          ?.message ||
-        result?.message ||
-        result?.error ||
-        `Erro PagBank ${response.status}`;
-
-      const error =
-        new Error(
-          description
-        );
-
-      error.status =
-        response.status;
-
-      error.pagbank =
-        result;
-
-      throw error;
-    }
-
-    return result;
-  };
-
-/* =========================================================
-   ESTOQUE
-========================================================= */
-
-const decrementStockForOrder = (
-  order
-) => {
-  if (
-    order.stock_decremented
-  ) {
-    return order;
-  }
-
-  const products =
-    read(
-      productsFile
+async function pagBankRequest(
+  endpoint,
+  options = {}
+) {
+  if (!PAGBANK_TOKEN) {
+    throw new Error(
+      "PAGBANK_TOKEN não configurado"
     );
-
-  for (
-    const item of
-    order.items || []
-  ) {
-    const index =
-      products.findIndex(
-        (product) =>
-          String(
-            product.id
-          ) ===
-          String(
-            item.id
-          )
-      );
-
-    if (
-      index < 0
-    ) {
-      continue;
-    }
-
-    const currentStock =
-      Number(
-        products[index]
-          .stock || 0
-      );
-
-    const quantity =
-      Number(
-        item.quantity ||
-        0
-      );
-
-    products[index].stock =
-      Math.max(
-        0,
-        currentStock -
-          quantity
-      );
   }
 
-  write(
-    productsFile,
-    products
+  const response = await fetch(
+    `${PAGBANK_BASE_URL}${endpoint}`,
+    {
+      ...options,
+
+      headers: {
+        Authorization:
+          `Bearer ${PAGBANK_TOKEN}`,
+
+        Accept:
+          "application/json",
+
+        "Content-Type":
+          "application/json",
+
+        ...(options.headers || {}),
+      },
+    }
   );
 
-  return {
-    ...order,
+  const data = await response
+    .json()
+    .catch(() => ({}));
 
-    stock_decremented:
-      true,
+  if (!response.ok) {
+    console.error(
+      "Erro PagBank:",
+      response.status,
+      data
+    );
+
+    throw new Error(
+      data?.error_messages?.[0]
+        ?.description ||
+      data?.message ||
+      `Erro PagBank (${response.status})`
+    );
+  }
+
+  return data;
+}
+
+/* =========================================================
+   STATUS PAGBANK
+========================================================= */
+
+const getChargeStatus = (
+  pagbankOrder
+) => {
+  const charges =
+    pagbankOrder?.charges || [];
+
+  if (!charges.length) {
+    return null;
+  }
+
+  const charge = charges[0];
+
+  return {
+    status:
+      charge.status || null,
+
+    chargeId:
+      charge.id || null,
   };
 };
 
 /* =========================================================
-   LOGIN ADMIN
+   BAIXA DE ESTOQUE NO POSTGRESQL
 ========================================================= */
 
-function auth(
+async function decrementOrderStock(
+  order
+) {
+  if (
+    !order ||
+    order.stock_decremented
+  ) {
+    return;
+  }
+
+  await productsReady;
+
+  const client =
+    await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    for (const item of order.items || []) {
+      const productId =
+        Number(item.id);
+
+      const quantity =
+        Number(item.quantity);
+
+      if (
+        !Number.isInteger(productId) ||
+        !Number.isInteger(quantity) ||
+        quantity <= 0
+      ) {
+        throw new Error(
+          "Item inválido para baixa de estoque"
+        );
+      }
+
+      const result =
+        await client.query(
+          `
+          UPDATE products
+          SET
+            stock = stock - $1,
+            updated_at =
+              CURRENT_TIMESTAMP
+          WHERE
+            id = $2
+            AND stock >= $1
+          RETURNING
+            id,
+            name,
+            stock
+          `,
+          [
+            quantity,
+            productId,
+          ]
+        );
+
+      if (!result.rowCount) {
+        throw new Error(
+          `Estoque insuficiente para o produto ${productId}`
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+
+    order.stock_decremented = true;
+
+    console.log(
+      `✅ Estoque baixado para o pedido ${order.id}`
+    );
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error(
+      "❌ Erro ao baixar estoque:",
+      error
+    );
+
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/* =========================================================
+   NORMALIZAR PRODUTO DO POSTGRES
+========================================================= */
+
+const normalizeProduct = (row) => ({
+  id: Number(row.id),
+
+  name: row.name || "",
+
+  description:
+    row.description || "",
+
+  price:
+    Number(row.price || 0),
+
+  stock:
+    Number(row.stock || 0),
+
+  sizes:
+    row.sizes || "",
+
+  colors:
+    row.colors || "",
+
+  image:
+    row.image || "",
+
+  active:
+    Boolean(row.active),
+
+  created_at:
+    row.created_at,
+
+  updated_at:
+    row.updated_at,
+});
+
+/* =========================================================
+   AUTENTICAÇÃO ADMIN
+========================================================= */
+
+const ADMIN_USER =
+  process.env.ADMIN_USER ||
+  "admin";
+
+const ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD ||
+  "admin";
+
+function requireAdmin(
   req,
   res,
   next
 ) {
-  const header =
-    req.headers
-      .authorization ||
-    "";
+  const auth =
+    req.headers.authorization || "";
 
   if (
-    !header.startsWith(
-      "Basic "
-    )
+    !auth.startsWith("Basic ")
   ) {
+    res.set(
+      "WWW-Authenticate",
+      'Basic realm="Hey Beauty Admin"'
+    );
+
     return res
       .status(401)
       .json({
         error:
-          "Não autorizado",
+          "Autenticação necessária",
       });
   }
 
-  const decoded =
-    Buffer.from(
-      header.slice(6),
-      "base64"
-    ).toString();
+  try {
+    const encoded =
+      auth.slice(6);
 
-  const separator =
-    decoded.indexOf(
-      ":"
-    );
+    const decoded =
+      Buffer.from(
+        encoded,
+        "base64"
+      ).toString("utf8");
 
-  const user =
-    decoded.slice(
-      0,
-      separator
-    );
+    const separator =
+      decoded.indexOf(":");
 
-  const password =
-    decoded.slice(
-      separator + 1
-    );
+    const user =
+      decoded.slice(
+        0,
+        separator
+      );
 
-  const adminUser =
-    process.env
-      .ADMIN_USER ||
-    "admin";
+    const password =
+      decoded.slice(
+        separator + 1
+      );
 
-  const adminPassword =
-    process.env
-      .ADMIN_PASSWORD ||
-    "troque-esta-senha";
+    if (
+      user !== ADMIN_USER ||
+      password !== ADMIN_PASSWORD
+    ) {
+      return res
+        .status(401)
+        .json({
+          error:
+            "Usuário ou senha inválidos",
+        });
+    }
 
-  if (
-    user !==
-      adminUser ||
-    password !==
-      adminPassword
-  ) {
+    next();
+  } catch {
     return res
       .status(401)
       .json({
         error:
-          "Usuário ou senha inválidos",
+          "Autenticação inválida",
       });
   }
-
-  next();
 }
 
 /* =========================================================
-   UPLOAD
+   UPLOAD DE IMAGENS
 ========================================================= */
 
-const upload =
-  multer({
-    storage:
-      multer.diskStorage({
-        destination: (
-          req,
-          file,
-          callback
-        ) => {
-          callback(
-            null,
-            uploads
-          );
-        },
+const storage =
+  multer.diskStorage({
+    destination:
+      (
+        req,
+        file,
+        callback
+      ) => {
+        callback(
+          null,
+          uploads
+        );
+      },
 
-        filename: (
-          req,
-          file,
-          callback
-        ) => {
-          callback(
-            null,
-            crypto.randomUUID() +
-              path
-                .extname(
-                  file.originalname
-                )
-                .toLowerCase()
+    filename:
+      (
+        req,
+        file,
+        callback
+      ) => {
+        const extension =
+          path.extname(
+            file.originalname
           );
-        },
-      }),
+
+        const filename =
+          `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${extension}`;
+
+        callback(
+          null,
+          filename
+        );
+      },
   });
 
-/* =========================================================
-   PRODUTOS PÚBLICOS
-========================================================= */
+const upload = multer({
+  storage,
 
-app.get(
-  "/api/products",
-  (
-    req,
-    res
-  ) => {
-    const products =
-      read(
-        productsFile
+  limits: {
+    fileSize:
+      5 * 1024 * 1024,
+  },
+
+  fileFilter:
+    (
+      req,
+      file,
+      callback
+    ) => {
+      if (
+        file.mimetype.startsWith(
+          "image/"
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
+      }
+
+      callback(
+        new Error(
+          "Envie somente arquivos de imagem"
+        )
       );
-
-    res.json(
-      products.filter(
-        (product) =>
-          product.active
-      )
-    );
-  }
-);
+    },
+});
 
 /* =========================================================
-   PRODUTOS ADMIN
-========================================================= */
-
-app.get(
-  "/api/admin/products",
-  auth,
-  (
-    req,
-    res
-  ) => {
-    res.json(
-      read(
-        productsFile
-      )
-    );
-  }
-);
-
-/* =========================================================
-   UPLOAD FOTO
+   UPLOAD ADMIN
 ========================================================= */
 
 app.post(
   "/api/upload",
-  auth,
-  upload.single(
-    "image"
-  ),
-  (
-    req,
-    res
-  ) => {
-    if (
-      !req.file
-    ) {
+
+  requireAdmin,
+
+  upload.single("image"),
+
+  (req, res) => {
+    if (!req.file) {
       return res
         .status(400)
         .json({
           error:
-            "Imagem não enviada.",
+            "Nenhuma imagem enviada",
         });
     }
+return res.json({
+  image:
+    `/uploads/${req.file.filename}`,
+});
+/* =========================================================
+   PRODUTOS — PÚBLICO
+========================================================= */
 
-    res.json({
-      image:
-        "/uploads/" +
-        req.file.filename,
-    });
+app.get(
+  "/api/products",
+
+  async (req, res) => {
+    try {
+      await productsReady;
+
+      const result =
+        await pool.query(`
+          SELECT *
+          FROM products
+          WHERE active = TRUE
+          ORDER BY id DESC
+        `);
+
+      return res.json(
+        result.rows.map(
+          normalizeProduct
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao listar produtos:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao carregar produtos",
+        });
+    }
+  }
+);
+
+/* =========================================================
+   PRODUTO INDIVIDUAL — PÚBLICO
+========================================================= */
+
+app.get(
+  "/api/products/:id",
+
+  async (req, res) => {
+    try {
+      await productsReady;
+
+      const id =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(id)
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Produto inválido",
+          });
+      }
+
+      const result =
+        await pool.query(
+          `
+          SELECT *
+          FROM products
+          WHERE
+            id = $1
+            AND active = TRUE
+          LIMIT 1
+          `,
+          [id]
+        );
+
+      if (!result.rowCount) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Produto não encontrado",
+          });
+      }
+
+      return res.json(
+        normalizeProduct(
+          result.rows[0]
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao buscar produto:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao carregar produto",
+        });
+    }
+  }
+);
+
+/* =========================================================
+   PRODUTOS — ADMIN
+========================================================= */
+
+app.get(
+  "/api/admin/products",
+
+  requireAdmin,
+
+  async (req, res) => {
+    try {
+      await productsReady;
+
+      const result =
+        await pool.query(`
+          SELECT *
+          FROM products
+          ORDER BY id DESC
+        `);
+
+      return res.json(
+        result.rows.map(
+          normalizeProduct
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao listar produtos do admin:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao carregar produtos",
+        });
+    }
   }
 );
 
@@ -791,213 +1000,340 @@ app.post(
 
 app.post(
   "/api/admin/products",
-  auth,
-  (
-    req,
-    res
-  ) => {
-    const products =
-      read(
-        productsFile
+
+  requireAdmin,
+
+  async (req, res) => {
+    try {
+      await productsReady;
+
+      const {
+        name,
+        description = "",
+        price,
+        stock = 0,
+        sizes = "",
+        colors = "",
+        image = "",
+        active = true,
+      } = req.body;
+
+      const productName =
+        String(
+          name || ""
+        ).trim();
+
+      const productPrice =
+  Math.round(
+    Number(price) * 100
+  );
+      const productStock =
+        Number(stock);
+
+      if (!productName) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Informe o nome do produto",
+          });
+      }
+
+      if (
+        !Number.isInteger(
+          productPrice
+        ) ||
+        productPrice < 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Preço inválido",
+          });
+      }
+
+      if (
+        !Number.isInteger(
+          productStock
+        ) ||
+        productStock < 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Estoque inválido",
+          });
+      }
+
+      const result =
+        await pool.query(
+          `
+          INSERT INTO products (
+            name,
+            description,
+            price,
+            stock,
+            sizes,
+            colors,
+            image,
+            active
+          )
+          VALUES (
+            $1,$2,$3,$4,$5,$6,$7,$8
+          )
+          RETURNING *
+          `,
+          [
+            productName,
+
+            String(
+              description || ""
+            ),
+
+            productPrice,
+            productStock,
+
+            String(
+              sizes || ""
+            ),
+
+            String(
+              colors || ""
+            ),
+
+            String(
+              image || ""
+            ),
+
+            Boolean(active),
+          ]
+        );
+
+      return res
+        .status(201)
+        .json(
+          normalizeProduct(
+            result.rows[0]
+          )
+        );
+    } catch (error) {
+      console.error(
+        "Erro ao cadastrar produto:",
+        error
       );
 
-    const body =
-      req.body;
-
-    const id =
-      products.length
-        ? Math.max(
-            ...products.map(
-              (product) =>
-                Number(
-                  product.id
-                )
-            )
-          ) + 1
-        : 1;
-
-    const stock =
-      Math.max(
-        0,
-        Number(
-          body.stock ||
-          0
-        )
-      );
-
-    const product = {
-      id,
-
-      name:
-        body.name ||
-        "",
-
-      description:
-        body.description ||
-        "",
-
-      price:
-        Math.round(
-          Number(
-            body.price ||
-            0
-          ) * 100
-        ),
-
-      stock,
-
-      sizes:
-        body.sizes ||
-        "",
-
-      colors:
-        body.colors ||
-        "",
-
-      image:
-        body.image ||
-        "",
-
-      active:
-        body.active
-          ? 1
-          : 0,
-    };
-
-    products.unshift(
-      product
-    );
-
-    write(
-      productsFile,
-      products
-    );
-
-    res.json({
-      id,
-      stock,
-    });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao cadastrar produto",
+        });
+    }
   }
 );
 
 /* =========================================================
-   EDITAR PRODUTO
+   EDITAR PRODUTO / ESTOQUE
 ========================================================= */
 
 app.put(
   "/api/admin/products/:id",
-  auth,
-  (
-    req,
-    res
-  ) => {
-    const products =
-      read(
-        productsFile
+
+  requireAdmin,
+
+  async (req, res) => {
+    try {
+      await productsReady;
+
+      const id =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(id)
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Produto inválido",
+          });
+      }
+
+      const currentResult =
+        await pool.query(
+          `
+          SELECT *
+          FROM products
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [id]
+        );
+
+      if (
+        !currentResult.rowCount
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Produto não encontrado",
+          });
+      }
+
+      const current =
+        currentResult.rows[0];
+
+      const name =
+        req.body.name !== undefined
+          ? String(
+              req.body.name
+            ).trim()
+          : current.name;
+
+      const description =
+        req.body.description !==
+        undefined
+          ? String(
+              req.body.description ||
+                ""
+            )
+          : current.description;
+
+      const price =
+  req.body.price !== undefined
+    ? Math.round(
+        Number(
+          req.body.price
+        ) * 100
+      )
+    : Number(
+        current.price
       );
 
-    const index =
-      products.findIndex(
-        (product) =>
-          String(
-            product.id
-          ) ===
-          String(
-            req.params.id
-          )
+      const stock =
+        req.body.stock !== undefined
+          ? Number(
+              req.body.stock
+            )
+          : Number(
+              current.stock
+            );
+
+      const sizes =
+        req.body.sizes !== undefined
+          ? String(
+              req.body.sizes || ""
+            )
+          : current.sizes;
+
+      const colors =
+        req.body.colors !== undefined
+          ? String(
+              req.body.colors || ""
+            )
+          : current.colors;
+
+      const image =
+        req.body.image !== undefined
+          ? String(
+              req.body.image || ""
+            )
+          : current.image;
+
+      const active =
+        req.body.active !== undefined
+          ? Boolean(
+              req.body.active
+            )
+          : Boolean(
+              current.active
+            );
+
+      if (!name) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Informe o nome do produto",
+          });
+      }
+
+      if (
+        !Number.isInteger(price) ||
+        price < 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Preço inválido",
+          });
+      }
+
+      if (
+        !Number.isInteger(stock) ||
+        stock < 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Estoque inválido",
+          });
+      }
+
+      const result =
+        await pool.query(
+          `
+          UPDATE products
+          SET
+            name = $1,
+            description = $2,
+            price = $3,
+            stock = $4,
+            sizes = $5,
+            colors = $6,
+            image = $7,
+            active = $8,
+            updated_at =
+              CURRENT_TIMESTAMP
+          WHERE id = $9
+          RETURNING *
+          `,
+          [
+            name,
+            description,
+            price,
+            stock,
+            sizes,
+            colors,
+            image,
+            active,
+            id,
+          ]
+        );
+
+      return res.json(
+        normalizeProduct(
+          result.rows[0]
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao editar produto:",
+        error
       );
 
-    if (
-      index < 0
-    ) {
       return res
-        .status(404)
+        .status(500)
         .json({
           error:
-            "Produto não encontrado.",
+            "Erro ao editar produto",
         });
     }
-
-    const current =
-      products[index];
-
-    let stock =
-      Number(
-        current.stock ||
-        0
-      );
-
-    if (
-      req.body.stock !==
-        undefined &&
-      req.body.stock !==
-        null &&
-      req.body.stock !==
-        ""
-    ) {
-      stock =
-        Math.max(
-          0,
-          Number(
-            req.body.stock
-          )
-        );
-    }
-
-    const price =
-      req.body.price !==
-      undefined
-        ? Math.round(
-            Number(
-              req.body.price ||
-              0
-            ) * 100
-          )
-        : current.price;
-
-    products[index] = {
-      ...current,
-
-      name:
-        req.body.name ??
-        current.name,
-
-      description:
-        req.body
-          .description ??
-        current.description,
-
-      price,
-
-      stock,
-
-      sizes:
-        req.body.sizes ??
-        current.sizes,
-
-      colors:
-        req.body.colors ??
-        current.colors,
-
-      image:
-        req.body.image ??
-        current.image,
-
-      active:
-        req.body.active
-          ? 1
-          : 0,
-    };
-
-    write(
-      productsFile,
-      products
-    );
-
-    res.json({
-      ok: true,
-      stock,
-    });
   }
 );
 
@@ -1007,54 +1343,94 @@ app.put(
 
 app.delete(
   "/api/admin/products/:id",
-  auth,
-  (
-    req,
-    res
-  ) => {
-    const products =
-      read(
-        productsFile
+
+  requireAdmin,
+
+  async (req, res) => {
+    try {
+      await productsReady;
+
+      const id =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(id)
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Produto inválido",
+          });
+      }
+
+      const result =
+        await pool.query(
+          `
+          DELETE FROM products
+          WHERE id = $1
+          RETURNING id
+          `,
+          [id]
+        );
+
+      if (!result.rowCount) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Produto não encontrado",
+          });
+      }
+
+      return res.json({
+        ok: true,
+      });
+    } catch (error) {
+      console.error(
+        "Erro ao excluir produto:",
+        error
       );
 
-    const filtered =
-      products.filter(
-        (product) =>
-          String(
-            product.id
-          ) !==
-          String(
-            req.params.id
-          )
-      );
-
-    write(
-      productsFile,
-      filtered
-    );
-
-    res.json({
-      ok: true,
-    });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao excluir produto",
+        });
+    }
   }
-);
-
-/* =========================================================
-   PEDIDOS ADMIN
+);/* =========================================================
+   PEDIDOS — ADMIN
+   Ainda ficam no JSON nesta etapa.
 ========================================================= */
 
 app.get(
   "/api/orders",
-  auth,
-  (
-    req,
-    res
-  ) => {
-    res.json(
-      read(
-        ordersFile
-      ).reverse()
-    );
+
+  requireAdmin,
+
+  (req, res) => {
+    try {
+      const orders =
+        read(ordersFile);
+
+      return res.json(
+        [...orders].reverse()
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao listar pedidos:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao carregar pedidos",
+        });
+    }
   }
 );
 
@@ -1064,399 +1440,462 @@ app.get(
 
 app.post(
   "/api/checkout",
-  (
-    req,
-    res
-  ) => {
-    const {
-      customer,
-      items,
-      delivery,
-    } = req.body;
 
-    if (
-      !customer?.name ||
-      !customer?.cpf ||
-      !customer?.email ||
-      !customer?.address ||
-      !items?.length
-    ) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Dados incompletos.",
-        });
-    }
+  async (req, res) => {
+    try {
+      await productsReady;
 
-    const cpf =
-      onlyNumbers(
-        customer.cpf
-      );
+      const {
+        customer,
+        items,
+        delivery,
+      } = req.body;
 
-    if (
-      cpf.length !==
-      11
-    ) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "CPF inválido.",
-        });
-    }
+      if (
+        !customer?.name ||
+        !customer?.cpf ||
+        !customer?.email ||
+        !customer?.address ||
+        !Array.isArray(items) ||
+        !items.length
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Dados incompletos.",
+          });
+      }
 
-    const allowedDelivery =
-      [
+      const cpf =
+        onlyNumbers(
+          customer.cpf
+        );
+
+      if (
+        cpf.length !== 11
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "CPF inválido.",
+          });
+      }
+
+      const allowedDelivery = [
         "salvador",
         "lauro",
         "uber_99",
         "nuvem_envio",
       ];
 
-    if (
-      !allowedDelivery.includes(
-        delivery?.method
-      )
-    ) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Forma de entrega inválida.",
-        });
-    }
-
-    const products =
-      read(
-        productsFile
-      );
-
-    let subtotal = 0;
-
-    const details = [];
-
-    for (
-      const item of items
-    ) {
-      const product =
-        products.find(
-          (product) =>
-            String(
-              product.id
-            ) ===
-              String(
-                item.id
-              ) &&
-            product.active
-        );
-
-      const quantity =
-        Number(
-          item.quantity
-        );
-
       if (
-        !product
+        !allowedDelivery.includes(
+          delivery?.method
+        )
       ) {
         return res
           .status(400)
           .json({
             error:
-              "Produto inválido.",
+              "Forma de entrega inválida.",
           });
       }
 
-      if (
-        quantity < 1 ||
-        quantity >
+      let subtotal = 0;
+
+      const details = [];
+
+      /*
+         IMPORTANTE:
+         preço e estoque vêm do banco,
+         nunca do navegador da cliente.
+      */
+
+      for (
+        const item of items
+      ) {
+        const productId =
+          Number(item.id);
+
+        const quantity =
           Number(
-            product.stock ||
-            0
-          )
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              `Estoque insuficiente para ${product.name}. Disponível: ${product.stock}.`,
-          });
-      }
+            item.quantity
+          );
 
-      subtotal +=
-        Number(
-          product.price
-        ) *
-        quantity;
+        if (
+          !Number.isInteger(
+            productId
+          ) ||
+          !Number.isInteger(
+            quantity
+          ) ||
+          quantity < 1
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "Produto ou quantidade inválida.",
+            });
+        }
 
-      details.push({
-        id:
-          product.id,
+        const result =
+          await pool.query(
+            `
+            SELECT *
+            FROM products
+            WHERE
+              id = $1
+              AND active = TRUE
+            LIMIT 1
+            `,
+            [productId]
+          );
 
-        name:
-          product.name,
+        if (
+          !result.rowCount
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "Produto inválido.",
+            });
+        }
 
-        quantity,
+        const product =
+          result.rows[0];
 
-        unit_price:
+        const availableStock =
+          Number(
+            product.stock || 0
+          );
+
+        if (
+          quantity >
+          availableStock
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                `Estoque insuficiente para ${product.name}. Disponível: ${availableStock}.`,
+            });
+        }
+
+        const unitPrice =
           Number(
             product.price
-          ),
+          );
 
-        size:
-          item.size ||
-          "",
+        subtotal +=
+          unitPrice *
+          quantity;
 
-        color:
-          item.color ||
-          "",
-      });
-    }
+        details.push({
+          id:
+            Number(
+              product.id
+            ),
 
-   let shippingFee = null;
+          name:
+            product.name,
 
-let shippingStatus =
-  "pending_quote";
+          quantity,
 
-let shippingService =
-  null;
+          unit_price:
+            unitPrice,
 
-let shippingServiceId =
-  null;
+          size:
+            item.size || "",
 
-let shippingDeliveryTime =
-  null;
+          color:
+            item.color || "",
+        });
+      }
 
-/* ENTREGA FIXA */
-if (
-  delivery.method ===
-    "salvador" ||
-  delivery.method ===
-    "lauro"
-) {
-  shippingFee =
-    FIXED_SHIPPING;
+      /* =====================================================
+         ENTREGA
+      ===================================================== */
 
-  shippingStatus =
-    "calculated";
-}
+      let shippingFee =
+        null;
 
-/* CORREIOS / MELHOR ENVIO */
-if (
-  delivery.method ===
-  "nuvem_envio"
-) {
-  const sentShipping =
-    Number(
-      delivery.shipping
-    );
+      let shippingStatus =
+        "pending_quote";
 
-  if (
-    !Number.isFinite(
-      sentShipping
-    ) ||
-    sentShipping <= 0
-  ) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Calcule e escolha uma opção dos Correios antes de continuar.",
-      });
-  }
+      let shippingService =
+        null;
 
-  shippingFee =
-    Math.round(
-      sentShipping
-    );
+      let shippingServiceId =
+        null;
 
-  shippingStatus =
-    "calculated";
+      let shippingDeliveryTime =
+        null;
 
-  shippingService =
-    delivery.service ||
-    "Correios";
+      /* SALVADOR / LAURO */
 
-  shippingServiceId =
-    delivery.serviceId ||
-    null;
+      if (
+        delivery.method ===
+          "salvador" ||
+        delivery.method ===
+          "lauro"
+      ) {
+        shippingFee =
+          FIXED_SHIPPING;
 
-  shippingDeliveryTime =
-    Number(
-      delivery.deliveryTime ||
-      0
-    ) || null;
-}
+        shippingStatus =
+          "calculated";
+      }
 
-/* UBER / 99 */
-if (
-  delivery.method ===
-  "uber_99"
-) {
-  shippingFee =
-    null;
+      /* CORREIOS */
 
-  shippingStatus =
-    "pending_quote";
-}
+      if (
+        delivery.method ===
+        "nuvem_envio"
+      ) {
+        const sentShipping =
+          Number(
+            delivery.shipping
+          );
 
-    const total =
-      shippingFee ===
-      null
-        ? null
-        : subtotal +
-          shippingFee;
+        if (
+          !Number.isFinite(
+            sentShipping
+          ) ||
+          sentShipping <= 0
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "Calcule e escolha uma opção dos Correios antes de continuar.",
+            });
+        }
 
-    const orders =
-      read(
-        ordersFile
-      );
+        shippingFee =
+          Math.round(
+            sentShipping
+          );
 
-    const id =
-      orders.length
-        ? Math.max(
-            ...orders.map(
-              (order) =>
-                Number(
-                  order.id
-                )
-            )
-          ) + 1
-        : 1;
+        shippingStatus =
+          "calculated";
 
-    const order = {
-      id,
+        shippingService =
+          delivery.service ||
+          "Correios";
 
-      customer_name:
-        customer.name,
+        shippingServiceId =
+          delivery.serviceId ||
+          null;
 
-      cpf,
+        shippingDeliveryTime =
+          Number(
+            delivery.deliveryTime ||
+              0
+          ) || null;
+      }
 
-      email:
-        customer.email,
+      /* UBER / 99 */
 
-      phone:
-        customer.phone ||
-        "",
+      if (
+        delivery.method ===
+        "uber_99"
+      ) {
+        shippingFee =
+          null;
 
-      cep:
-        customer.cep ||
-        "",
+        shippingStatus =
+          "pending_quote";
+      }
 
-      street:
-        customer.street ||
-        "",
+      const total =
+        shippingFee === null
+          ? null
+          : subtotal +
+            shippingFee;
 
-      number:
-        customer.number ||
-        "",
+      /* =====================================================
+         CRIAR PEDIDO
+      ===================================================== */
 
-      complement:
-        customer.complement ||
-        "",
+      const orders =
+        read(ordersFile);
 
-      neighborhood:
-        customer.neighborhood ||
-        "",
+      const id =
+        orders.length
+          ? Math.max(
+              ...orders.map(
+                (order) =>
+                  Number(
+                    order.id ||
+                      0
+                  )
+              )
+            ) + 1
+          : 1;
 
-      city:
-        customer.city ||
-        "",
-
-      state:
-        customer.state ||
-        "",
-
-      reference:
-        customer.reference ||
-        "",
-
-      address:
-        customer.address,
-
-      
-        delivery_method:
-  delivery.method,
-
-shipping_fee:
-  shippingFee,
-
-shipping_status:
-  shippingStatus,
-
-shipping_service:
-  shippingService,
-
-shipping_service_id:
-  shippingServiceId,
-
-shipping_delivery_time:
-  shippingDeliveryTime,
-
-subtotal,
-
-total,
-
-      items:
-        details,
-
-      payment_status:
-        "pending",
-
-      payment_method:
-        null,
-
-      stock_decremented:
-        false,
-
-      pagbank_order_id:
-        null,
-
-      pagbank_charge_id:
-        null,
-
-      created_at:
-        new Date()
-          .toISOString(),
-    };
-
-    orders.push(
-      order
-    );
-
-    write(
-      ordersFile,
-      orders
-    );
-
-    res.json({
-      orderId:
+      const order = {
         id,
 
-      subtotal,
+        customer_name:
+          customer.name,
 
-      shippingFee,
+        cpf,
 
-      shippingStatus,
+        email:
+          customer.email,
 
-      total,
+        phone:
+          customer.phone ||
+          "",
 
-      deliveryMethod:
-        delivery.method,
-    });
+        cep:
+          customer.cep ||
+          "",
+
+        street:
+          customer.street ||
+          "",
+
+        number:
+          customer.number ||
+          "",
+
+        complement:
+          customer.complement ||
+          "",
+
+        neighborhood:
+          customer.neighborhood ||
+          "",
+
+        city:
+          customer.city ||
+          "",
+
+        state:
+          customer.state ||
+          "",
+
+        reference:
+          customer.reference ||
+          "",
+
+        address:
+          customer.address,
+
+        delivery_method:
+          delivery.method,
+
+        shipping_fee:
+          shippingFee,
+
+        shipping_status:
+          shippingStatus,
+
+        shipping_service:
+          shippingService,
+
+        shipping_service_id:
+          shippingServiceId,
+
+        shipping_delivery_time:
+          shippingDeliveryTime,
+
+        subtotal,
+
+        total,
+
+        items:
+          details,
+
+        payment_status:
+          "pending",
+
+        payment_method:
+          null,
+
+        stock_decremented:
+          false,
+
+        pagbank_order_id:
+          null,
+
+        pagbank_charge_id:
+          null,
+
+        pagbank_qr_code:
+          null,
+
+        pagbank_qr_code_image:
+          null,
+
+        installments:
+          null,
+
+        payment_total:
+          null,
+
+        pix_expiration:
+          null,
+
+        created_at:
+          new Date()
+            .toISOString(),
+
+        updated_at:
+          new Date()
+            .toISOString(),
+      };
+
+      orders.push(order);
+
+      write(
+        ordersFile,
+        orders
+      );
+
+      return res.json({
+        orderId: id,
+
+        subtotal,
+
+        shippingFee,
+
+        shippingStatus,
+
+        total,
+
+        deliveryMethod:
+          delivery.method,
+      });
+    } catch (error) {
+      console.error(
+        "Erro checkout:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao criar pedido.",
+        });
+    }
   }
 );
 
 /* =========================================================
-   PARCELAS / JUROS
+   PARCELAS PAGBANK
 ========================================================= */
 
 app.get(
   "/api/pagbank/installments",
-  async (
-    req,
-    res
-  ) => {
+
+  async (req, res) => {
     try {
       const orderId =
         req.query.orderId;
@@ -1471,8 +1910,7 @@ app.get(
 
       if (
         !orderId ||
-        bin.length !==
-          6
+        bin.length !== 6
       ) {
         return res
           .status(400)
@@ -1489,9 +1927,7 @@ app.get(
           orderId
         );
 
-      if (
-        !order
-      ) {
+      if (!order) {
         return res
           .status(404)
           .json({
@@ -1501,8 +1937,7 @@ app.get(
       }
 
       if (
-        order.total ==
-        null
+        order.total == null
       ) {
         return res
           .status(400)
@@ -1525,7 +1960,12 @@ app.get(
           max_installments:
             "12",
 
-          max_installments_no_interest: 0,
+          /*
+             0 = nenhuma parcela
+             obrigatoriamente sem juros.
+          */
+          max_installments_no_interest:
+            "0",
 
           credit_card_bin:
             bin,
@@ -1561,7 +2001,7 @@ app.get(
             []
           : [];
 
-      res.json({
+      return res.json({
         brand,
 
         plans:
@@ -1575,15 +2015,11 @@ app.get(
     } catch (error) {
       console.error(
         "Erro parcelas:",
-        error.pagbank ||
-          error
+        error
       );
 
-      res
-        .status(
-          error.status ||
-            500
-        )
+      return res
+        .status(500)
         .json({
           error:
             error.message ||
@@ -1594,15 +2030,13 @@ app.get(
 );
 
 /* =========================================================
-   PIX
+   PIX PAGBANK
 ========================================================= */
 
 app.post(
   "/api/pagbank/pix",
-  async (
-    req,
-    res
-  ) => {
+
+  async (req, res) => {
     try {
       const {
         orderId,
@@ -1617,9 +2051,7 @@ app.post(
           orderId
         );
 
-      if (
-        !order
-      ) {
+      if (!order) {
         return res
           .status(404)
           .json({
@@ -1629,8 +2061,7 @@ app.post(
       }
 
       if (
-        order.total ==
-        null
+        order.total == null
       ) {
         return res
           .status(400)
@@ -1700,9 +2131,7 @@ app.post(
           order
         );
 
-      if (
-        shipping
-      ) {
+      if (shipping) {
         payload.shipping =
           shipping;
       }
@@ -1747,6 +2176,12 @@ app.post(
       let qrText =
         qr?.text ||
         null;
+
+      /*
+         Algumas respostas do PagBank
+         trazem o Pix copia-e-cola
+         através de link.
+      */
 
       if (
         !qrText &&
@@ -1796,8 +2231,7 @@ app.post(
           null,
 
         pix_expiration:
-          qr
-            ?.expiration_date ||
+          qr?.expiration_date ||
           null,
 
         updated_at:
@@ -1811,7 +2245,7 @@ app.post(
         updatedOrder
       );
 
-      res.json({
+      return res.json({
         ok: true,
 
         orderId:
@@ -1828,8 +2262,7 @@ app.post(
           null,
 
         expirationDate:
-          qr
-            ?.expiration_date ||
+          qr?.expiration_date ||
           null,
 
         message:
@@ -1838,15 +2271,11 @@ app.post(
     } catch (error) {
       console.error(
         "Erro Pix PagBank:",
-        error.pagbank ||
-          error
+        error
       );
 
-      res
-        .status(
-          error.status ||
-            500
-        )
+      return res
+        .status(500)
         .json({
           error:
             error.message ||
@@ -1854,18 +2283,14 @@ app.post(
         });
     }
   }
-);
-
-/* =========================================================
-   CARTÃO
+);/* =========================================================
+   CARTÃO PAGBANK
 ========================================================= */
 
 app.post(
   "/api/pagbank/card",
-  async (
-    req,
-    res
-  ) => {
+
+  async (req, res) => {
     try {
       const {
         orderId,
@@ -1898,9 +2323,7 @@ app.post(
           orderId
         );
 
-      if (
-        !order
-      ) {
+      if (!order) {
         return res
           .status(404)
           .json({
@@ -1910,8 +2333,7 @@ app.post(
       }
 
       if (
-        order.total ==
-        null
+        order.total == null
       ) {
         return res
           .status(400)
@@ -1939,7 +2361,7 @@ app.post(
           Math.max(
             1,
             Number(
-              installments
+              installments || 1
             )
           )
         );
@@ -1953,8 +2375,7 @@ app.post(
         );
 
       if (
-        cleanBin.length !==
-        6
+        cleanBin.length !== 6
       ) {
         return res
           .status(400)
@@ -1963,6 +2384,10 @@ app.post(
               "Cartão inválido.",
           });
       }
+
+      /* =====================================================
+         CONSULTAR PARCELAMENTO
+      ===================================================== */
 
       const feeQuery =
         new URLSearchParams({
@@ -1977,7 +2402,8 @@ app.post(
           max_installments:
             "12",
 
-          max_installments_no_interest: 0,
+          max_installments_no_interest:
+            "0",
 
           credit_card_bin:
             cleanBin,
@@ -2038,8 +2464,12 @@ app.post(
           selectedPlan
             ?.amount
             ?.value ||
-            order.total
+          order.total
         );
+
+      /* =====================================================
+         CRIAR COBRANÇA
+      ===================================================== */
 
       const payload = {
         reference_id:
@@ -2112,9 +2542,7 @@ app.post(
           order
         );
 
-      if (
-        shipping
-      ) {
+      if (shipping) {
         payload.shipping =
           shipping;
       }
@@ -2153,8 +2581,7 @@ app.post(
           "credit_card",
 
         payment_status:
-          status ===
-          "PAID"
+          status === "PAID"
             ? "paid"
             : String(
                 status
@@ -2179,14 +2606,17 @@ app.post(
             .toISOString(),
       };
 
+      /*
+         PAGAMENTO APROVADO:
+         baixa o estoque no PostgreSQL.
+      */
+
       if (
-        status ===
-        "PAID"
+        status === "PAID"
       ) {
-        updatedOrder =
-          decrementStockForOrder(
-            updatedOrder
-          );
+        await decrementOrderStock(
+          updatedOrder
+        );
       }
 
       saveOrder(
@@ -2195,7 +2625,7 @@ app.post(
         updatedOrder
       );
 
-      res.json({
+      return res.json({
         ok: true,
 
         status,
@@ -2210,7 +2640,7 @@ app.post(
           Number(
             selectedPlan
               ?.installment_value ||
-            0
+              0
           ),
 
         total:
@@ -2236,15 +2666,11 @@ app.post(
     } catch (error) {
       console.error(
         "Erro cartão PagBank:",
-        error.pagbank ||
-          error
+        error
       );
 
-      res
-        .status(
-          error.status ||
-            500
-        )
+      return res
+        .status(500)
         .json({
           error:
             error.message ||
@@ -2260,10 +2686,8 @@ app.post(
 
 app.post(
   "/api/pagbank/webhook",
-  (
-    req,
-    res
-  ) => {
+
+  async (req, res) => {
     try {
       const payload =
         req.body;
@@ -2280,6 +2704,11 @@ app.post(
           ordersFile
         );
 
+      /*
+         Primeiro tenta localizar pelo
+         ID do pedido PagBank.
+      */
+
       let index =
         orders.findIndex(
           (order) =>
@@ -2287,10 +2716,16 @@ app.post(
             payload?.id
         );
 
+      /*
+         Se não encontrar,
+         procura pelo reference_id:
+         HEY-BEAUTY-PIX-123
+         HEY-BEAUTY-123
+      */
+
       if (
         index < 0 &&
-        payload
-          ?.reference_id
+        payload?.reference_id
       ) {
         const match =
           String(
@@ -2299,16 +2734,16 @@ app.post(
             /(\d+)$/
           );
 
-        if (
-          match
-        ) {
+        if (match) {
           index =
             orders.findIndex(
               (order) =>
                 String(
                   order.id
                 ) ===
-                match[1]
+                String(
+                  match[1]
+                )
             );
         }
       }
@@ -2323,6 +2758,10 @@ app.post(
           payload
             ?.charges?.[0];
 
+        /*
+           PAGAMENTO CONFIRMADO
+        */
+
         if (
           charge?.status ===
           "PAID"
@@ -2330,10 +2769,19 @@ app.post(
           order.payment_status =
             "paid";
 
-          order =
-            decrementStockForOrder(
+          /*
+             Evita baixar duas vezes.
+             decrementOrderStock verifica
+             stock_decremented.
+          */
+
+          if (
+            !order.stock_decremented
+          ) {
+            await decrementOrderStock(
               order
             );
+          }
         } else if (
           charge?.status
         ) {
@@ -2350,6 +2798,13 @@ app.post(
             charge.id;
         }
 
+        if (
+          payload?.id
+        ) {
+          order.pagbank_order_id =
+            payload.id;
+        }
+
         order.updated_at =
           new Date()
             .toISOString();
@@ -2361,9 +2816,22 @@ app.post(
           ordersFile,
           orders
         );
+
+        console.log(
+          `✅ Pedido ${order.id} atualizado pelo webhook`
+        );
+      } else {
+        console.log(
+          "⚠️ Webhook recebido, mas pedido não encontrado"
+        );
       }
 
-      res.sendStatus(
+      /*
+         PagBank precisa receber 200
+         mesmo depois de processarmos.
+      */
+
+      return res.sendStatus(
         200
       );
     } catch (error) {
@@ -2372,7 +2840,13 @@ app.post(
         error
       );
 
-      res.sendStatus(
+      /*
+         Também devolvemos 200 para
+         evitar repetição infinita
+         em caso de erro interno.
+      */
+
+      return res.sendStatus(
         200
       );
     }
@@ -2380,11 +2854,13 @@ app.post(
 );
 
 /* =========================================================
-   FRETE - MELHOR ENVIO / SEDEX
+   FRETE — MELHOR ENVIO / CORREIOS
+   PAC + SEDEX + MINI ENVIOS
 ========================================================= */
 
 app.post(
   "/api/frete/sedex",
+
   async (req, res) => {
     try {
       const cepDestino =
@@ -2437,7 +2913,8 @@ app.post(
         await fetch(
           "https://melhorenvio.com.br/api/v2/me/shipment/calculate",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               Authorization:
@@ -2461,9 +2938,13 @@ app.post(
         );
 
       const data =
-        await response.json();
+        await response
+          .json()
+          .catch(() => ({}));
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         console.error(
           "Erro Melhor Envio:",
           data
@@ -2481,83 +2962,115 @@ app.post(
           });
       }
 
-      const correiosIds = [1, 2, 17];
+      /*
+         IDs que apareceram na sua
+         conta do Melhor Envio:
 
-const options = Array.isArray(data)
-  ? data
-      .filter((service) =>
-        correiosIds.includes(
-          Number(service.id)
-        )
-      )
-      .filter(
-        (service) =>
-          !service.error &&
-          service.price
-      )
-      .map((service) => ({
-        serviceId:
-          Number(service.id),
+         1  = PAC
+         2  = SEDEX
+         17 = Mini Envios
+      */
 
-        service:
-          service.name,
+      const correiosIds = [
+        1,
+        2,
+        17,
+      ];
 
-        company:
-          "Correios",
+      const options =
+        Array.isArray(data)
+          ? data
+              .filter(
+                (service) =>
+                  correiosIds.includes(
+                    Number(
+                      service.id
+                    )
+                  )
+              )
+              .filter(
+                (service) =>
+                  !service.error &&
+                  service.price
+              )
+              .map(
+                (service) => ({
+                  serviceId:
+                    Number(
+                      service.id
+                    ),
 
-        price:
-          Math.round(
-            Number(
-              service.custom_price ||
-                service.price
-            ) * 100
-          ),
+                  service:
+                    service.name,
 
-        deliveryTime:
-          Number(
-            service.custom_delivery_time ||
-              service.delivery_time
-          ),
+                  company:
+                    "Correios",
 
-        deliveryRange:
-          service.custom_delivery_range ||
-          service.delivery_range ||
-          null,
-      }))
-  : [];
+                  price:
+                    Math.round(
+                      Number(
+                        service.custom_price ||
+                          service.price
+                      ) * 100
+                    ),
 
-if (!options.length) {
-  return res
-    .status(400)
-    .json({
-      error:
-        "Nenhuma opção dos Correios disponível para este CEP.",
-    });
-}
+                  deliveryTime:
+                    Number(
+                      service.custom_delivery_time ||
+                        service.delivery_time
+                    ),
 
-options.sort(
-  (a, b) =>
-    a.price - b.price
-);
+                  deliveryRange:
+                    service.custom_delivery_range ||
+                    service.delivery_range ||
+                    null,
+                })
+              )
+          : [];
 
-res.json({
-  options,
-});
+      if (
+        !options.length
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Nenhuma opção dos Correios disponível para este CEP.",
+          });
+      }
+
+      /*
+         Mais barato aparece primeiro.
+      */
+
+      options.sort(
+        (a, b) =>
+          a.price -
+          b.price
+      );
+
+      return res.json({
+        options,
+      });
     } catch (error) {
       console.error(
-        "Erro frete SEDEX:",
+        "Erro frete Correios:",
         error
       );
 
-      res
+      return res
         .status(500)
         .json({
           error:
-            "Não foi possível calcular o SEDEX.",
+            "Não foi possível calcular o frete.",
         });
     }
   }
 );
+
+/* =========================================================
+   FRONTEND
+========================================================= */
 
 const clientDist =
   path.join(
@@ -2572,12 +3085,16 @@ app.use(
   )
 );
 
+/*
+   React Router:
+   qualquer rota que não seja API
+   retorna index.html.
+*/
+
 app.get(
   "/{*splat}",
-  (
-    req,
-    res
-  ) => {
+
+  (req, res) => {
     res.sendFile(
       path.join(
         clientDist,
@@ -2587,16 +3104,29 @@ app.get(
   }
 );
 
+/* =========================================================
+   INICIAR SERVIDOR
+========================================================= */
+
 app.listen(
   PORT,
   "0.0.0.0",
+
   () => {
     console.log(
-      `HEY BEAUTY rodando na porta ${PORT}`
+      `✅ HEY BEAUTY rodando na porta ${PORT}`
     );
 
     console.log(
-      `PagBank: ${PAGBANK_ENV}`
+      `✅ PagBank: ${PAGBANK_ENV}`
+    );
+
+    console.log(
+      "✅ Produtos e estoque: PostgreSQL"
+    );
+
+    console.log(
+      "ℹ️ Pedidos: JSON (migração será a próxima etapa)"
     );
   }
 );
