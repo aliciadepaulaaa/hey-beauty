@@ -54,6 +54,11 @@ const ordersFile =
 ========================================================= */
 
 const FIXED_SHIPPING = 1500;
+const MELHOR_ENVIO_TOKEN =
+  process.env.MELHOR_ENVIO_TOKEN || "";
+
+const SHIPPING_ORIGIN_CEP =
+  "42821810";
 
 const PAGBANK_TOKEN =
   process.env.PAGBANK_TOKEN || "";
@@ -2254,6 +2259,177 @@ app.post(
   }
 );
 
+/* =========================================================
+   FRETE - MELHOR ENVIO / SEDEX
+========================================================= */
+
+app.post(
+  "/api/frete/sedex",
+  async (req, res) => {
+    try {
+      const cepDestino =
+        onlyNumbers(
+          req.body.cep
+        );
+
+      if (
+        cepDestino.length !== 8
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "CEP inválido.",
+          });
+      }
+
+      if (
+        !MELHOR_ENVIO_TOKEN
+      ) {
+        return res
+          .status(500)
+          .json({
+            error:
+              "Token do Melhor Envio não configurado.",
+          });
+      }
+
+      const body = {
+        from: {
+          postal_code:
+            SHIPPING_ORIGIN_CEP,
+        },
+
+        to: {
+          postal_code:
+            cepDestino,
+        },
+
+        package: {
+          height: 10,
+          width: 20,
+          length: 30,
+          weight: 0.5,
+        },
+      };
+
+      const response =
+        await fetch(
+          "https://melhorenvio.com.br/api/v2/me/shipment/calculate",
+          {
+            method: "POST",
+
+            headers: {
+              Authorization:
+                `Bearer ${MELHOR_ENVIO_TOKEN}`,
+
+              Accept:
+                "application/json",
+
+              "Content-Type":
+                "application/json",
+
+              "User-Agent":
+                "Hey Beauty",
+            },
+
+            body:
+              JSON.stringify(
+                body
+              ),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        console.error(
+          "Erro Melhor Envio:",
+          data
+        );
+
+        return res
+          .status(
+            response.status
+          )
+          .json({
+            error:
+              data.message ||
+              data.error ||
+              "Erro ao calcular frete.",
+          });
+      }
+
+      const sedex =
+        Array.isArray(data)
+          ? data.find(
+              (service) =>
+                Number(
+                  service.id
+                ) === 2
+            )
+          : null;
+
+      if (
+        !sedex ||
+        sedex.error
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              sedex?.error ||
+              "SEDEX indisponível para este CEP.",
+          });
+      }
+
+      const shippingCents =
+        Math.round(
+          Number(
+            sedex.custom_price ||
+            sedex.price
+          ) * 100
+        );
+
+      res.json({
+        serviceId: 2,
+
+        service:
+          "SEDEX",
+
+        company:
+          "Correios",
+
+        price:
+          shippingCents,
+
+        deliveryTime:
+          Number(
+            sedex.custom_delivery_time ||
+            sedex.delivery_time
+          ),
+
+        deliveryRange:
+          sedex.custom_delivery_range ||
+          sedex.delivery_range ||
+          null,
+      });
+    } catch (error) {
+      console.error(
+        "Erro frete SEDEX:",
+        error
+      );
+
+      res
+        .status(500)
+        .json({
+          error:
+            "Não foi possível calcular o SEDEX.",
+        });
+    }
+  }
+);
 
 const clientDist =
   path.join(

@@ -770,15 +770,23 @@ function Checkout({
           item.quantity,
       0
     );
+const [sedexQuote, setSedexQuote] = useState(null);
 
-  const fixedDelivery =
-    form.deliveryMethod === "salvador" ||
-    form.deliveryMethod === "lauro";
+const [loadingSedex, setLoadingSedex] = useState(false);
 
-  const shipping =
-    fixedDelivery
-      ? LOCAL_SHIPPING
-      : null;
+ const fixedDelivery =
+  form.deliveryMethod === "salvador" ||
+  form.deliveryMethod === "lauro";
+
+const sedexDelivery =
+  form.deliveryMethod === "nuvem_envio";
+
+const shipping =
+  fixedDelivery
+    ? LOCAL_SHIPPING
+    : sedexDelivery && sedexQuote
+    ? sedexQuote.price
+    : null;
 
   const total =
     shipping === null
@@ -865,7 +873,43 @@ function Checkout({
       setLoadingCep(false);
     }
   };
+const calcularSedex = async () => {
+  const cep = onlyNumbers(form.cep);
 
+  if (cep.length !== 8) {
+    setMessage("Informe um CEP válido.");
+    return;
+  }
+
+  try {
+    setLoadingSedex(true);
+    setMessage("Calculando SEDEX...");
+
+    const result = await api(
+      "/api/frete/sedex",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cep,
+        }),
+      }
+    );
+
+    setSedexQuote(result);
+
+    setMessage(
+      `SEDEX: ${money(result.price)} — prazo aproximado de ${result.deliveryTime} dias úteis.`
+    );
+  } catch (error) {
+    setSedexQuote(null);
+    setMessage(error.message);
+  } finally {
+    setLoadingSedex(false);
+  }
+};
   const submit = async (
     event
   ) => {
@@ -878,7 +922,16 @@ function Checkout({
 
       return;
     }
+if (
+  form.deliveryMethod === "nuvem_envio" &&
+  !sedexQuote
+) {
+  setMessage(
+    "Calcule o valor do SEDEX antes de continuar."
+  );
 
+  return;
+}
     if (
       onlyNumbers(
         form.cpf
@@ -997,29 +1050,16 @@ function Checkout({
         );
 
       const paymentOrder = {
-        orderId:
-          data.orderId,
-
-        subtotal,
-
-        shipping:
-          data.shippingFee,
-
-        total:
-          data.total,
-
-        deliveryMethod:
-          form.deliveryMethod,
-
-        customer: {
-          ...form,
-
-          cpf:
-            onlyNumbers(
-              form.cpf
-            ),
-        },
-      };
+  orderId: data.orderId,
+  subtotal,
+  shipping: data.shippingFee,
+  total: data.total,
+  deliveryMethod: form.deliveryMethod,
+  customer: {
+    ...form,
+    cpf: onlyNumbers(form.cpf),
+  },
+};
 
       localStorage.setItem(
         "paymentOrder",
@@ -1370,11 +1410,35 @@ function Checkout({
               <strong>
                 Nuvem Envio / Correios SEDEX
               </strong>
+{form.deliveryMethod === "nuvem_envio" && (
+  <div>
+    <button
+      type="button"
+      className="btn"
+      onClick={calcularSedex}
+      disabled={loadingSedex}
+    >
+      {loadingSedex
+        ? "Calculando..."
+        : "Calcular SEDEX"}
+    </button>
 
+    {sedexQuote && (
+      <p>
+        <strong>
+          SEDEX — {money(sedexQuote.price)}
+        </strong>
+        <br />
+        Prazo aproximado:{" "}
+        {sedexQuote.deliveryTime} dias úteis.
+      </p>
+    )}
+  </div>
+)}
               <p>
-                Envio para todo o Brasil.
-                Cálculo automático de frete em configuração.
-              </p>
+  Envio para todo o Brasil .
+  Informe o CEP para calcular o SEDEX.
+</p>
             </label>
 
             <button
@@ -1770,32 +1834,15 @@ function Payment({
             cardForm.number
           );
 
-        const encrypted =
-          window.PagSeguro.encryptCard({
-            publicKey:
-              PAGBANK_PUBLIC_KEY,
-
-            holder:
-              cardForm.holder,
-
-            number:
-              cardNumber,
-
-            expMonth:
-              onlyNumbers(
-                cardForm.expMonth
-              ),
-
-            expYear:
-              onlyNumbers(
-                cardForm.expYear
-              ),
-
-            securityCode:
-              onlyNumbers(
-                cardForm.securityCode
-              ),
-          });
+         const encrypted =
+  window.PagSeguro.encryptCard({
+    publicKey: PAGBANK_PUBLIC_KEY,
+    holder: cardForm.holder,
+    number: cardNumber,
+    expMonth: onlyNumbers(cardForm.expMonth),
+    expYear: onlyNumbers(cardForm.expYear),
+    securityCode: onlyNumbers(cardForm.securityCode),
+  });
 
         if (encrypted.hasErrors) {
           throw new Error(
