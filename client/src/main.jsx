@@ -490,7 +490,10 @@ function Home() {
       >
         <div className="section-title-line">
           <span />
-          <h2>DESTAQUES</h2>
+          <div className="section-heading-copy">
+            <h2>NOVIDADES</h2>
+            <p>Escolhidos para você</p>
+          </div>
           <span />
         </div>
 
@@ -515,7 +518,7 @@ function Home() {
                   }
                 >
                   <span className="product-badge">
-                    DESTAQUE
+                    NOVO
                   </span>
 
                   {product.image ? (
@@ -571,16 +574,20 @@ function Home() {
 
       <section className="home-links">
         <div className="home-links-inner">
-          <img
-            className="home-links-logo"
-            src="/logo-hey-beauty.png"
-            alt="HEY BEAUTY"
-          />
-
-          <h2>HEY BEAUTY</h2>
-          <p>
-            Moda feminina para você se sentir ainda mais linda.
-          </p>
+          <div className="home-links-brand">
+            <img
+              className="home-links-logo"
+              src="/logo-hey-beauty.png"
+              alt="HEY BEAUTY"
+            />
+            <div>
+              <span className="eyebrow">HEY BEAUTY</span>
+              <h2>Feita para destacar você.</h2>
+              <p>
+                Moda feminina, atendimento próximo e uma curadoria pensada para o seu estilo.
+              </p>
+            </div>
+          </div>
 
           <a
             className="link-pill"
