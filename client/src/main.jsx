@@ -31,7 +31,7 @@ const WHATSAPP_URL =
   "https://wa.me/5571987635924?text=Ol%C3%A1%20Hey%20Beauty!%20Vim%20pelo%20site%20e%20gostaria%20de%20atendimento.";
 
 const INSTAGRAM_URL =
-  "https://www.instagram.com/heybeauty2/";
+  "https://www.instagram.com/hey.beauty2/";
 
 /* =========================================================
    FUNÇÕES GERAIS
