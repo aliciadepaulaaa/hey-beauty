@@ -351,9 +351,12 @@ const buildShipping = (
           order.number
         ),
 
+      ...(order.complement
+  ? {
       complement:
-        order.complement ||
-        "",
+        order.complement,
+    }
+  : {}),
 
       locality:
         order.neighborhood ||
@@ -2253,9 +2256,6 @@ app.post(
   }
 );
 
-/* =========================================================
-   FRONTEND
-========================================================= */
 
 const clientDist =
   path.join(
@@ -2284,10 +2284,6 @@ app.get(
     );
   }
 );
-
-/* =========================================================
-   SERVIDOR
-========================================================= */
 
 app.listen(
   PORT,
