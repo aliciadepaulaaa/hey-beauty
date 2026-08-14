@@ -1569,3 +1569,124 @@ body {
     height: 235px;
   }
 }
+
+/* =========================
+   POLÍTICA DE TROCAS
+========================= */
+
+.policy-inline-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--gold, #c5a45d);
+  font-weight: 700;
+}
+
+.policy-page {
+  min-height: 100vh;
+  background: var(--cream, #f6f1e7);
+}
+
+.policy-hero {
+  padding: 72px 6% 62px;
+  text-align: center;
+  background: var(--olive, #4a5140);
+  color: #fff;
+}
+
+.policy-hero span {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--gold, #c5a45d);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 4px;
+}
+
+.policy-hero h1 {
+  max-width: 850px;
+  margin: 0 auto 18px;
+  font-family: "Playfair Display", serif;
+  font-size: clamp(36px, 5vw, 62px);
+  font-weight: 600;
+}
+
+.policy-hero p {
+  max-width: 720px;
+  margin: 0 auto;
+  color: rgba(255,255,255,.84);
+  line-height: 1.7;
+}
+
+.policy-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 56px 6% 80px;
+}
+
+.policy-card {
+  margin-bottom: 18px;
+  padding: 28px;
+  background: #fff;
+  border: 1px solid rgba(74,81,64,.16);
+  border-radius: 8px;
+}
+
+.policy-card h2 {
+  margin: 0 0 12px;
+  color: var(--olive-dark, #30362a);
+  font-family: "Playfair Display", serif;
+  font-size: 26px;
+}
+
+.policy-card p,
+.policy-card li {
+  color: #4c5047;
+  line-height: 1.75;
+}
+
+.policy-card ul {
+  margin: 12px 0 0;
+  padding-left: 22px;
+}
+
+.policy-card-highlight {
+  border-color: var(--gold, #c5a45d);
+  background: #fffdf8;
+}
+
+.policy-whatsapp {
+  margin-top: 10px;
+}
+
+.policy-legal-note {
+  margin: 28px 0;
+  padding: 18px 20px;
+  border-left: 3px solid var(--gold, #c5a45d);
+  background: rgba(197,164,93,.10);
+  color: #4c5047;
+  line-height: 1.65;
+}
+
+.policy-back {
+  display: inline-block;
+  color: var(--olive-dark, #30362a);
+  font-weight: 800;
+}
+
+@media (max-width: 600px) {
+  .policy-hero {
+    padding: 52px 7% 44px;
+  }
+
+  .policy-content {
+    padding: 34px 5% 60px;
+  }
+
+  .policy-card {
+    padding: 22px 18px;
+  }
+
+  .policy-card h2 {
+    font-size: 23px;
+  }
+}

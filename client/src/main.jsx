@@ -28,10 +28,11 @@ const PAGBANK_PUBLIC_KEY =
 
 // Coloque seus links reais quando quiser ativar estes botões.
 const WHATSAPP_URL =
-   "https://wa.me/5571987635924?text=Olá%20Hey%20Beauty!%20Vim%20pelo%20site%20e%20gostaria%20de%20mais%20informações.";
+  "https://wa.me/5571987635924?text=Ol%C3%A1%20Hey%20Beauty!%20Vim%20pelo%20site%20e%20gostaria%20de%20atendimento.";
 
 const INSTAGRAM_URL =
-  "https://www.instagram.com/hey.beauty2/";
+  "https://www.instagram.com/heybeauty2/";
+
 /* =========================================================
    FUNÇÕES GERAIS
 ========================================================= */
@@ -418,6 +419,13 @@ function App() {
         />
 
         <Route
+          path="/trocas-devolucoes"
+          element={
+            <PolicyPage />
+          }
+        />
+
+        <Route
           path="/admin"
           element={
             <Admin />
@@ -613,15 +621,15 @@ function Home() {
             <b>↗</b>
           </a>
 
-          <a
+          <Link
             className="link-pill"
-            href="#trocas"
+            to="/trocas-devolucoes"
           >
             <span>
               Política de Trocas e Devoluções
             </span>
             <b>↗</b>
-          </a>
+          </Link>
 
           <a
             className="link-pill"
@@ -636,17 +644,108 @@ function Home() {
           </a>
 
           <div
-            id="trocas"
             className="policy-preview"
           >
             <strong>
               Trocas e devoluções
             </strong>
             <p>
-              Para solicitar troca ou devolução, entre em contato com o atendimento da HEY BEAUTY. As condições completas podem ser adicionadas aqui depois.
+              Troca voluntária em até 3 dias úteis, conforme as condições da loja. Compras online também possuem os direitos previstos na legislação do consumidor.
             </p>
+            <Link
+              className="policy-inline-link"
+              to="/trocas-devolucoes"
+            >
+              Ver política completa →
+            </Link>
           </div>
         </div>
+      </section>
+    </main>
+  );
+}
+
+/* =========================================================
+   POLÍTICA DE TROCAS E DEVOLUÇÕES
+========================================================= */
+
+function PolicyPage() {
+  return (
+    <main className="policy-page">
+      <section className="policy-hero">
+        <span>HEY BEAUTY</span>
+        <h1>Política de Trocas e Devoluções</h1>
+        <p>
+          Queremos que sua experiência com a HEY BEAUTY seja segura e transparente. Leia as condições abaixo antes de solicitar uma troca ou devolução.
+        </p>
+      </section>
+
+      <section className="policy-content">
+        <article className="policy-card">
+          <h2>Troca por tamanho, modelo ou preferência</h2>
+          <p>
+            A HEY BEAUTY oferece, por liberalidade, prazo de <strong>3 dias úteis após o recebimento</strong> para solicitar troca por tamanho, modelo ou preferência, desde que a peça esteja dentro das condições desta política e haja disponibilidade de estoque.
+          </p>
+        </article>
+
+        <article className="policy-card">
+          <h2>Condições da peça</h2>
+          <p>A peça deverá ser devolvida sem sinais de uso e nas mesmas condições em que foi entregue. Não serão aceitas, na troca voluntária, peças com:</p>
+          <ul>
+            <li>etiqueta removida, cortada, violada ou sem a etiqueta original;</li>
+            <li>odor de perfume, suor, cigarro, produtos cosméticos ou qualquer outro odor;</li>
+            <li>manchas, maquiagem, desodorante, sujeira ou sinais de lavagem;</li>
+            <li>rasgos, fios puxados, furos, avarias, ajustes ou alterações feitas pela cliente;</li>
+            <li>sinais de uso, desgaste ou qualquer condição diferente da entrega original.</li>
+          </ul>
+        </article>
+
+        <article className="policy-card policy-card-highlight">
+          <h2>Itens fora da troca voluntária da loja</h2>
+          <p>
+            Não participam da política comercial de troca por tamanho, modelo ou preferência: <strong>peças em promoção</strong>, peças de <strong>tule, renda e tricô</strong>, produtos com <strong>desconto de 20%, 30%, 40%, 50% ou superior</strong>, além de itens identificados como <strong>liquidação, bazar ou queima de estoque</strong>.
+          </p>
+          <p>
+            <strong>Importante:</strong> essas restrições não afastam direitos obrigatórios previstos no Código de Defesa do Consumidor, inclusive em caso de defeito ou no exercício válido do direito de arrependimento em compras realizadas pela internet.
+          </p>
+        </article>
+
+        <article className="policy-card">
+          <h2>Compras realizadas pelo site</h2>
+          <p>
+            Nas compras feitas pela internet, a cliente pode exercer o <strong>direito de arrependimento no prazo legal de 7 dias corridos</strong>, contado na forma prevista pela legislação aplicável. Nesse caso, a solicitação não fica limitada ao prazo comercial de 3 dias úteis nem às exclusões de troca voluntária acima.
+          </p>
+        </article>
+
+        <article className="policy-card">
+          <h2>Produto com defeito</h2>
+          <p>
+            Se a peça apresentar defeito ou vício, entre em contato com a HEY BEAUTY assim que identificar o problema. As situações de defeito serão tratadas de acordo com os direitos e prazos previstos na legislação do consumidor, independentemente de a peça ter sido comprada em promoção.
+          </p>
+        </article>
+
+        <article className="policy-card">
+          <h2>Como solicitar</h2>
+          <p>
+            Entre em contato pelo WhatsApp informando seu nome, número do pedido, peça adquirida e motivo da solicitação. Quando necessário, poderemos pedir fotos da peça e da etiqueta para agilizar a análise.
+          </p>
+          <a
+            className="btn policy-whatsapp"
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Solicitar pelo WhatsApp
+          </a>
+        </article>
+
+        <p className="policy-legal-note">
+          Esta política comercial complementa, mas não substitui, os direitos garantidos pela legislação brasileira de proteção ao consumidor.
+        </p>
+
+        <Link className="policy-back" to="/">
+          ← Voltar para a loja
+        </Link>
       </section>
     </main>
   );
