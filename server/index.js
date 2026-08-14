@@ -1703,16 +1703,17 @@ app.post(
       /* UBER / 99 */
 
       if (
-        delivery.method ===
-        "uber_99"
-      ) {
-        shippingFee =
-          null;
+  delivery.method ===
+  "uber_99"
+) {
+  shippingFee = 0;
 
-        shippingStatus =
-          "pending_quote";
-      }
+  shippingStatus =
+    "paid_separately";
 
+  shippingService =
+    "Uber Flash / 99 Entrega";
+}
       const total =
         shippingFee === null
           ? null

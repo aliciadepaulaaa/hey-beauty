@@ -1221,14 +1221,20 @@ function Checkout({
     form.deliveryMethod ===
     "nuvem_envio";
 
-  const shipping =
-    fixedDelivery
-      ? LOCAL_SHIPPING
-      : correiosDelivery &&
-        selectedShipping
-      ? selectedShipping.price
-      : null;
+  
+    const uberDelivery =
+  form.deliveryMethod ===
+  "uber_99";
 
+const shipping =
+  fixedDelivery
+    ? LOCAL_SHIPPING
+    : correiosDelivery &&
+      selectedShipping
+    ? selectedShipping.price
+    : uberDelivery
+    ? 0
+    : null;
   const total =
     shipping === null
       ? subtotal
@@ -2249,14 +2255,13 @@ function Checkout({
             )}
 
             {order.deliveryMethod ===
-              "uber_99" && (
-              <p>
-                Uber Flash / 99
-                Entrega — valor
-                definido pelo
-                aplicativo.
-              </p>
-            )}
+  "uber_99" && (
+  <p>
+    Uber Flash / 99 Entrega
+    — frete pago separadamente
+    no momento da solicitação.
+  </p>
+)}
 
             {order.deliveryMethod ===
               "nuvem_envio" &&
@@ -2361,14 +2366,17 @@ function Checkout({
           </span>
 
           <span>
-            {shipping !== null
-              ? money(
-                  shipping
-                )
-              : form.deliveryMethod
-              ? "A definir"
-              : "Selecione"}
-          </span>
+  {form.deliveryMethod ===
+  "uber_99"
+    ? "Pago separadamente"
+    : shipping !== null
+    ? money(
+        shipping
+      )
+    : form.deliveryMethod
+    ? "A definir"
+    : "Selecione"}
+</span>
         </p>
 
         {shipping !== null && (
