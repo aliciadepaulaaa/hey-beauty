@@ -331,72 +331,59 @@ function App() {
           ×
         </button>
       </div>
+<nav className="side-menu-links">
+  <Link
+    to="/"
+    onClick={() => setMenuOpen(false)}
+  >
+    Início
+    <span>›</span>
+  </Link>
 
-      <nav className="side-menu-links">
-        <Link
-          to="/"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-        >
-          Início
-          <span>›</span>
-        </Link>
+  <a
+    href="/#produtos"
+    onClick={() => setMenuOpen(false)}
+  >
+    Produtos
+    <span>›</span>
+  </a>
 
-        <a
-          href="/#produtos"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-        >
-          Produtos
-          <span>›</span>
-        </a>
+  <Link
+    to="/carrinho"
+    onClick={() => setMenuOpen(false)}
+  >
+    Carrinho
+    <span>›</span>
+  </Link>
 
-        <Link
-          to="/carrinho"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-        >
-          Carrinho
-          <span>›</span>
-        </Link>
+  <a
+    href="/#trocas"
+    onClick={() => setMenuOpen(false)}
+  >
+    Política de Trocas e Devoluções
+    <span>›</span>
+  </a>
 
-        <a
-          href="/#trocas"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-        >
-          Política de Trocas e Devoluções
-          <span>›</span>
-        </a>
+  <a
+    href="https://wa.me/5571987635924"
+    target="_blank"
+    rel="noreferrer"
+    onClick={() => setMenuOpen(false)}
+  >
+    WhatsApp
+    <span>↗</span>
+  </a>
 
-        <a
-          href={WHATSAPP_URL}
-          target="_blank"
-          rel="noreferrer"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-        >
-          WhatsApp
-          <span>↗</span>
-        </a>
-
-        <a
-          href={INSTAGRAM_URL}
-          target="_blank"
-          rel="noreferrer"
-          onClick={() =>
-            setMenuOpen(false)
-          }
-        >
-          Instagram
-          <span>↗</span>
-        </a>
-      </nav>
+  <a
+    href="https://www.instagram.com/hey.beauty2/"
+    target="_blank"
+    rel="noreferrer"
+    onClick={() => setMenuOpen(false)}
+  >
+    Instagram
+    <span>↗</span>
+  </a>
+</nav>
 
       <div className="side-menu-footer">
         <strong>HEY BEAUTY</strong>
