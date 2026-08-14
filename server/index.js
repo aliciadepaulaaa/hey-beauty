@@ -32,7 +32,32 @@ pool
   });
 const root =
   path.join(__dirname, "..");
+async function initDatabase() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      price INTEGER NOT NULL DEFAULT 0,
+      stock INTEGER NOT NULL DEFAULT 0,
+      sizes TEXT DEFAULT '',
+      colors TEXT DEFAULT '',
+      image TEXT DEFAULT '',
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
+  console.log("✅ Tabela products pronta");
+}
+
+initDatabase().catch((error) => {
+  console.error(
+    "❌ Erro ao criar tabelas:",
+    error
+  );
+});
 /* =========================================================
    DADOS / ARQUIVOS
 ========================================================= */
