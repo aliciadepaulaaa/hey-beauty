@@ -1852,8 +1852,7 @@ app.post(
           max_installments:
             "12",
 
-          max_installments_no_interest:
-            "1",
+          max_installments_no_interest: 0,
 
           credit_card_bin:
             cleanBin,
