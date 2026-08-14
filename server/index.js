@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 const crypto = require("crypto");
+const { Pool } = require("pg");
 
 require("dotenv").config({
   path: path.join(__dirname, "..", ".env"),
@@ -11,9 +12,25 @@ require("dotenv").config({
 
 const app = express();
 
-const PORT =
-  process.env.PORT || 3000;
+const app = express();
 
+const PORT = process.env.PORT || 3000;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL
+    ? { rejectUnauthorized: false }
+    : false,
+});
+
+pool
+  .query("SELECT NOW()")
+  .then(() => {
+    console.log("✅ PostgreSQL conectado com sucesso");
+  })
+  .catch((error) => {
+    console.error("❌ Erro ao conectar PostgreSQL:", error.message);
+  });
 const root =
   path.join(__dirname, "..");
 
