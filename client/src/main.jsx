@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+
 import {
   BrowserRouter,
   Routes,
@@ -45,23 +46,30 @@ const parsePrice = (value) => {
 
   let text = String(value ?? "").trim();
 
-  if (!text) return 0;
+  if (!text) {
+    return 0;
+  }
 
   text = text.replace(/\s/g, "");
 
   if (text.includes(",") && text.includes(".")) {
-    text = text.replace(/\./g, "").replace(",", ".");
+    text = text
+      .replace(/\./g, "")
+      .replace(",", ".");
   } else {
     text = text.replace(",", ".");
   }
 
   const number = Number(text);
 
-  return Number.isFinite(number) ? number : 0;
+  return Number.isFinite(number)
+    ? number
+    : 0;
 };
 
 const formatCpf = (value) => {
-  const numbers = onlyNumbers(value).slice(0, 11);
+  const numbers =
+    onlyNumbers(value).slice(0, 11);
 
   return numbers
     .replace(/(\d{3})(\d)/, "$1.$2")
@@ -70,13 +78,19 @@ const formatCpf = (value) => {
 };
 
 const formatCep = (value) => {
-  const numbers = onlyNumbers(value).slice(0, 8);
+  const numbers =
+    onlyNumbers(value).slice(0, 8);
 
-  return numbers.replace(/(\d{5})(\d)/, "$1-$2");
+  return numbers.replace(
+    /(\d{5})(\d)/,
+    "$1-$2"
+  );
 };
 
 const imageUrl = (image) => {
-  if (!image) return "";
+  if (!image) {
+    return "";
+  }
 
   if (
     image.startsWith("http://") ||
@@ -88,14 +102,25 @@ const imageUrl = (image) => {
   return API_URL + image;
 };
 
-const api = async (url, options = {}) => {
-  const finalUrl = url.startsWith("http")
-    ? url
-    : API_URL + url;
+const api = async (
+  url,
+  options = {}
+) => {
+  const finalUrl =
+    url.startsWith("http")
+      ? url
+      : API_URL + url;
 
-  const response = await fetch(finalUrl, options);
+  const response =
+    await fetch(
+      finalUrl,
+      options
+    );
 
-  const data = await response.json().catch(() => ({}));
+  const data =
+    await response
+      .json()
+      .catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
@@ -113,62 +138,86 @@ const api = async (url, options = {}) => {
 ========================================================= */
 
 const loadPagBankSdk = () =>
-  new Promise((resolve, reject) => {
-    if (window.PagSeguro) {
-      resolve(window.PagSeguro);
-      return;
-    }
+  new Promise(
+    (resolve, reject) => {
+      if (window.PagSeguro) {
+        resolve(
+          window.PagSeguro
+        );
 
-    const existing = document.querySelector(
-      'script[data-pagbank-sdk="true"]'
-    );
+        return;
+      }
 
-    if (existing) {
-      existing.addEventListener("load", () =>
-        resolve(window.PagSeguro)
+      const existing =
+        document.querySelector(
+          'script[data-pagbank-sdk="true"]'
+        );
+
+      if (existing) {
+        existing.addEventListener(
+          "load",
+          () =>
+            resolve(
+              window.PagSeguro
+            )
+        );
+
+        existing.addEventListener(
+          "error",
+          reject
+        );
+
+        return;
+      }
+
+      const script =
+        document.createElement(
+          "script"
+        );
+
+      script.src =
+        "https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js";
+
+      script.async = true;
+
+      script.dataset.pagbankSdk =
+        "true";
+
+      script.onload = () =>
+        resolve(
+          window.PagSeguro
+        );
+
+      script.onerror = () =>
+        reject(
+          new Error(
+            "Não foi possível carregar o PagBank."
+          )
+        );
+
+      document.body.appendChild(
+        script
       );
-
-      existing.addEventListener("error", reject);
-
-      return;
     }
-
-    const script = document.createElement("script");
-
-    script.src =
-      "https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js";
-
-    script.async = true;
-
-    script.dataset.pagbankSdk = "true";
-
-    script.onload = () =>
-      resolve(window.PagSeguro);
-
-    script.onerror = () =>
-      reject(
-        new Error(
-          "Não foi possível carregar o PagBank."
-        )
-      );
-
-    document.body.appendChild(script);
-  });
+  );
 
 /* =========================================================
    APP
 ========================================================= */
 
 function App() {
-  const [cart, setCart] = useState(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem("cart") || "[]"
-      );
-    } catch {
-      return [];
-    }
-  });
+  const [cart, setCart] =
+    useState(() => {
+      try {
+        return JSON.parse(
+          localStorage.getItem(
+            "cart"
+          ) || "[]"
+        );
+      } catch {
+        return [];
+      }
+    });
 
   useEffect(() => {
     localStorage.setItem(
@@ -182,51 +231,82 @@ function App() {
     size = "",
     color = ""
   ) => {
-    setCart((currentCart) => {
-      const index = currentCart.findIndex(
-        (item) =>
-          item.id === product.id &&
-          item.size === size &&
-          item.color === color
-      );
+    setCart(
+      (currentCart) => {
+        const index =
+          currentCart.findIndex(
+            (item) =>
+              item.id ===
+                product.id &&
+              item.size ===
+                size &&
+              item.color ===
+                color
+          );
 
-      if (index >= 0) {
-        const updated = [...currentCart];
+        if (index >= 0) {
+          const updated = [
+            ...currentCart,
+          ];
 
-        updated[index] = {
-          ...updated[index],
-          quantity:
-            updated[index].quantity + 1,
-        };
+          updated[index] = {
+            ...updated[index],
 
-        return updated;
+            quantity:
+              updated[index]
+                .quantity + 1,
+          };
+
+          return updated;
+        }
+
+        return [
+          ...currentCart,
+
+          {
+            id:
+              product.id,
+
+            name:
+              product.name,
+
+            price:
+              product.price,
+
+            image:
+              product.image ||
+              "",
+
+            size,
+
+            color,
+
+            quantity: 1,
+          },
+        ];
       }
-
-      return [
-        ...currentCart,
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image || "",
-          size,
-          color,
-          quantity: 1,
-        },
-      ];
-    });
+    );
   };
 
-  const removeFromCart = (index) => {
-    setCart((currentCart) =>
-      currentCart.filter((_, i) => i !== index)
+  const removeFromCart = (
+    index
+  ) => {
+    setCart(
+      (currentCart) =>
+        currentCart.filter(
+          (_, i) =>
+            i !== index
+        )
     );
   };
 
   return (
     <>
       <header>
-        <Link className="brand" to="/">
+        <Link
+          className="brand"
+          to="/"
+        >
           HEY BEAUTY
         </Link>
 
@@ -238,8 +318,12 @@ function App() {
           <Link to="/carrinho">
             Carrinho (
             {cart.reduce(
-              (total, item) =>
-                total + item.quantity,
+              (
+                total,
+                item
+              ) =>
+                total +
+                item.quantity,
               0
             )}
             )
@@ -250,14 +334,18 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={<Home />}
+          element={
+            <Home />
+          }
         />
 
         <Route
           path="/produto/:id"
           element={
             <ProductPage
-              addToCart={addToCart}
+              addToCart={
+                addToCart
+              }
             />
           }
         />
@@ -267,7 +355,9 @@ function App() {
           element={
             <Cart
               cart={cart}
-              removeFromCart={removeFromCart}
+              removeFromCart={
+                removeFromCart
+              }
             />
           }
         />
@@ -275,7 +365,9 @@ function App() {
         <Route
           path="/checkout"
           element={
-            <Checkout cart={cart} />
+            <Checkout
+              cart={cart}
+            />
           }
         />
 
@@ -284,15 +376,18 @@ function App() {
           element={
             <Payment
               cart={cart}
-              setCart={setCart}
+              setCart={
+                setCart
+              }
             />
           }
         />
 
-        {/* NÃO APARECE NO MENU, MAS CONTINUA ACESSÍVEL */}
         <Route
           path="/admin"
-          element={<Admin />}
+          element={
+            <Admin />
+          }
         />
       </Routes>
     </>
@@ -304,18 +399,31 @@ function App() {
 ========================================================= */
 
 function Home() {
-  const [products, setProducts] = useState([]);
-  const [error, setError] = useState("");
+  const [
+    products,
+    setProducts,
+  ] = useState([]);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   useEffect(() => {
-    api("/api/products")
+    api(
+      "/api/products"
+    )
       .then((data) => {
         setProducts(
-          Array.isArray(data) ? data : []
+          Array.isArray(data)
+            ? data
+            : []
         );
       })
       .catch((error) => {
-        setError(error.message);
+        setError(
+          error.message
+        );
       });
   }, []);
 
@@ -323,15 +431,19 @@ function Home() {
     <main>
       <section className="hero">
         <div>
-          <span>HEY BEAUTY</span>
+          <span>
+            HEY BEAUTY
+          </span>
 
           <h1>
-            Seu estilo começa aqui.
+            Seu estilo começa
+            aqui.
           </h1>
 
           <p>
-            Escolha suas peças favoritas e
-            encontre seu próximo look.
+            Escolha suas peças
+            favoritas e encontre
+            seu próximo look.
           </p>
 
           <a
@@ -358,55 +470,71 @@ function Home() {
         )}
 
         <div className="grid">
-          {products.map((product) => (
-            <article
-              className="card"
-              key={product.id}
-            >
-              {product.image ? (
-                <img
-                  src={imageUrl(product.image)}
-                  alt={product.name}
-                />
-              ) : (
-                <div className="placeholder">
-                  FOTO DA PEÇA
-                </div>
-              )}
-
-              <div className="cardbody">
-                <h3>
-                  {product.name}
-                </h3>
-
-                <p>
-                  {product.description}
-                </p>
-
-                <strong>
-                  {money(product.price)}
-                </strong>
-
-                {Number(product.stock) <= 0 && (
-                  <p>
-                    <strong>
-                      Esgotado
-                    </strong>
-                  </p>
+          {products.map(
+            (product) => (
+              <article
+                className="card"
+                key={
+                  product.id
+                }
+              >
+                {product.image ? (
+                  <img
+                    src={imageUrl(
+                      product.image
+                    )}
+                    alt={
+                      product.name
+                    }
+                  />
+                ) : (
+                  <div className="placeholder">
+                    FOTO DA PEÇA
+                  </div>
                 )}
 
-                <Link
-                  className="btn full"
-                  to={
-                    "/produto/" +
-                    product.id
-                  }
-                >
-                  Ver detalhes
-                </Link>
-              </div>
-            </article>
-          ))}
+                <div className="cardbody">
+                  <h3>
+                    {
+                      product.name
+                    }
+                  </h3>
+
+                  <p>
+                    {
+                      product.description
+                    }
+                  </p>
+
+                  <strong>
+                    {money(
+                      product.price
+                    )}
+                  </strong>
+
+                  {Number(
+                    product.stock
+                  ) <= 0 && (
+                    <p>
+                      <strong>
+                        Esgotado
+                      </strong>
+                    </p>
+                  )}
+
+                  <Link
+                    className="btn full"
+                    to={
+                      "/produto/" +
+                      product.id
+                    }
+                  >
+                    Ver detalhes
+                  </Link>
+                </div>
+              </article>
+            )
+          )}
         </div>
       </section>
     </main>
@@ -420,12 +548,15 @@ function Home() {
 function ProductPage({
   addToCart,
 }) {
-  const { id } = useParams();
+  const { id } =
+    useParams();
 
   return (
     <Product
       id={id}
-      addToCart={addToCart}
+      addToCart={
+        addToCart
+      }
     />
   );
 }
@@ -434,33 +565,48 @@ function Product({
   id,
   addToCart,
 }) {
-  const [product, setProduct] =
-    useState(null);
+  const [
+    product,
+    setProduct,
+  ] = useState(null);
 
-  const [size, setSize] =
-    useState("");
+  const [
+    size,
+    setSize,
+  ] = useState("");
 
-  const [color, setColor] =
-    useState("");
+  const [
+    color,
+    setColor,
+  ] = useState("");
 
-  const [message, setMessage] =
-    useState("");
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
   useEffect(() => {
-    api("/api/products")
+    api(
+      "/api/products"
+    )
       .then((data) => {
         const found =
           Array.isArray(data)
             ? data.find(
                 (item) =>
-                  item.id == id
+                  item.id ==
+                  id
               )
             : null;
 
-        setProduct(found || null);
+        setProduct(
+          found || null
+        );
       })
       .catch((error) => {
-        setMessage(error.message);
+        setMessage(
+          error.message
+        );
       });
   }, [id]);
 
@@ -473,7 +619,11 @@ function Product({
   }
 
   const add = () => {
-    if (Number(product.stock) <= 0) {
+    if (
+      Number(
+        product.stock
+      ) <= 0
+    ) {
       setMessage(
         "Esta peça está esgotada."
       );
@@ -519,8 +669,12 @@ function Product({
       <div>
         {product.image ? (
           <img
-            src={imageUrl(product.image)}
-            alt={product.name}
+            src={imageUrl(
+              product.image
+            )}
+            alt={
+              product.name
+            }
           />
         ) : (
           <div className="placeholder big">
@@ -535,11 +689,15 @@ function Product({
         </h1>
 
         <h2>
-          {money(product.price)}
+          {money(
+            product.price
+          )}
         </h2>
 
         <p>
-          {product.description}
+          {
+            product.description
+          }
         </p>
 
         {product.sizes && (
@@ -551,7 +709,9 @@ function Product({
             <select
               value={size}
               onChange={(e) =>
-                setSize(e.target.value)
+                setSize(
+                  e.target.value
+                )
               }
             >
               <option value="">
@@ -560,14 +720,22 @@ function Product({
 
               {product.sizes
                 .split(",")
-                .map((item) => (
-                  <option
-                    key={item}
-                    value={item}
-                  >
-                    {item}
-                  </option>
-                ))}
+                .map(
+                  (item) => (
+                    <option
+                      key={
+                        item
+                      }
+                      value={
+                        item
+                      }
+                    >
+                      {
+                        item
+                      }
+                    </option>
+                  )
+                )}
             </select>
           </>
         )}
@@ -579,9 +747,13 @@ function Product({
             </label>
 
             <select
-              value={color}
+              value={
+                color
+              }
               onChange={(e) =>
-                setColor(e.target.value)
+                setColor(
+                  e.target.value
+                )
               }
             >
               <option value="">
@@ -590,14 +762,22 @@ function Product({
 
               {product.colors
                 .split(",")
-                .map((item) => (
-                  <option
-                    key={item}
-                    value={item}
-                  >
-                    {item}
-                  </option>
-                ))}
+                .map(
+                  (item) => (
+                    <option
+                      key={
+                        item
+                      }
+                      value={
+                        item
+                      }
+                    >
+                      {
+                        item
+                      }
+                    </option>
+                  )
+                )}
             </select>
           </>
         )}
@@ -606,10 +786,14 @@ function Product({
           className="btn full"
           onClick={add}
           disabled={
-            Number(product.stock) <= 0
+            Number(
+              product.stock
+            ) <= 0
           }
         >
-          {Number(product.stock) <= 0
+          {Number(
+            product.stock
+          ) <= 0
             ? "Produto esgotado"
             : "Adicionar ao carrinho"}
         </button>
@@ -634,7 +818,10 @@ function Cart({
 }) {
   const total =
     cart.reduce(
-      (sum, item) =>
+      (
+        sum,
+        item
+      ) =>
         sum +
         item.price *
           item.quantity,
@@ -650,7 +837,8 @@ function Cart({
       {!cart.length ? (
         <>
           <p>
-            Seu carrinho está vazio.
+            Seu carrinho está
+            vazio.
           </p>
 
           <Link
@@ -664,14 +852,21 @@ function Cart({
         <>
           <div className="cart">
             {cart.map(
-              (item, index) => (
+              (
+                item,
+                index
+              ) => (
                 <div
                   className="cartrow"
-                  key={index}
+                  key={
+                    index
+                  }
                 >
                   <div>
                     <b>
-                      {item.name}
+                      {
+                        item.name
+                      }
                     </b>
 
                     <small>
@@ -683,7 +878,10 @@ function Cart({
 
                       {" · "}
 
-                      {item.quantity}x
+                      {
+                        item.quantity
+                      }
+                      x
                     </small>
                   </div>
 
@@ -696,7 +894,9 @@ function Cart({
 
                   <button
                     onClick={() =>
-                      removeFromCart(index)
+                      removeFromCart(
+                        index
+                      )
                     }
                   >
                     Excluir
@@ -707,14 +907,16 @@ function Cart({
           </div>
 
           <div className="total">
-            Total: {money(total)}
+            Total:{" "}
+            {money(total)}
           </div>
 
           <Link
             className="btn"
             to="/checkout"
           >
-            Continuar para entrega
+            Continuar para
+            entrega
           </Link>
         </>
       )}
@@ -732,359 +934,535 @@ function Checkout({
   const navigate =
     useNavigate();
 
-  const [form, setForm] =
-    useState({
-      name: "",
-      cpf: "",
-      email: "",
-      phone: "",
+  const [
+    form,
+    setForm,
+  ] = useState({
+    name: "",
+    cpf: "",
+    email: "",
+    phone: "",
 
-      cep: "",
-      street: "",
-      number: "",
-      complement: "",
-      neighborhood: "",
-      city: "",
-      state: "",
+    cep: "",
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
 
-      deliveryMethod: "",
-    });
+    deliveryMethod: "",
+  });
 
-  const [message, setMessage] =
-    useState("");
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
-  const [order, setOrder] =
-    useState(null);
+  const [
+    order,
+    setOrder,
+  ] = useState(null);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [loadingCep, setLoadingCep] =
-    useState(false);
+  const [
+    loadingCep,
+    setLoadingCep,
+  ] = useState(false);
+
+  const [
+    shippingOptions,
+    setShippingOptions,
+  ] = useState([]);
+
+  const [
+    selectedShipping,
+    setSelectedShipping,
+  ] = useState(null);
+
+  const [
+    loadingSedex,
+    setLoadingSedex,
+  ] = useState(false);
 
   const subtotal =
     cart.reduce(
-      (sum, item) =>
+      (
+        sum,
+        item
+      ) =>
         sum +
         item.price *
           item.quantity,
       0
     );
-const [sedexQuote, setSedexQuote] = useState(null);
 
-const [loadingSedex, setLoadingSedex] = useState(false);
+  const fixedDelivery =
+    form.deliveryMethod ===
+      "salvador" ||
+    form.deliveryMethod ===
+      "lauro";
 
- const fixedDelivery =
-  form.deliveryMethod === "salvador" ||
-  form.deliveryMethod === "lauro";
+  const correiosDelivery =
+    form.deliveryMethod ===
+    "nuvem_envio";
 
-const sedexDelivery =
-  form.deliveryMethod === "nuvem_envio";
-
-const shipping =
-  fixedDelivery
-    ? LOCAL_SHIPPING
-    : sedexDelivery && sedexQuote
-    ? sedexQuote.price
-    : null;
+  const shipping =
+    fixedDelivery
+      ? LOCAL_SHIPPING
+      : correiosDelivery &&
+        selectedShipping
+      ? selectedShipping.price
+      : null;
 
   const total =
     shipping === null
       ? subtotal
-      : subtotal + shipping;
+      : subtotal +
+        shipping;
 
   const updateField = (
     field,
     value
   ) => {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setForm(
+      (current) => ({
+        ...current,
+
+        [field]:
+          value,
+      })
+    );
   };
 
   /* =======================================================
-     BUSCAR CEP AUTOMATICAMENTE
+     BUSCAR CEP
   ======================================================= */
 
-  const buscarCep = async (
-    cepDigitado
-  ) => {
-    const cep =
-      onlyNumbers(
-        cepDigitado
-      );
-
-    if (cep.length !== 8) {
-      return;
-    }
-
-    try {
-      setLoadingCep(true);
-
-      const response =
-        await fetch(
-          `https://viacep.com.br/ws/${cep}/json/`
+  const buscarCep =
+    async (
+      cepDigitado
+    ) => {
+      const cep =
+        onlyNumbers(
+          cepDigitado
         );
 
-      const data =
-        await response.json();
+      if (
+        cep.length !== 8
+      ) {
+        return;
+      }
 
-      if (data.erro) {
+      try {
+        setLoadingCep(
+          true
+        );
+
+        const response =
+          await fetch(
+            `https://viacep.com.br/ws/${cep}/json/`
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          data.erro
+        ) {
+          setMessage(
+            "CEP não encontrado."
+          );
+
+          return;
+        }
+
+        setForm(
+          (current) => ({
+            ...current,
+
+            cep:
+              data.cep ||
+              formatCep(
+                cep
+              ),
+
+            street:
+              data.logradouro ||
+              "",
+
+            neighborhood:
+              data.bairro ||
+              "",
+
+            city:
+              data.localidade ||
+              "",
+
+            state:
+              data.uf ||
+              "",
+          })
+        );
+
+        setShippingOptions(
+          []
+        );
+
+        setSelectedShipping(
+          null
+        );
+
         setMessage(
-          "CEP não encontrado."
+          "Endereço preenchido automaticamente."
+        );
+      } catch {
+        setMessage(
+          "Não foi possível consultar o CEP."
+        );
+      } finally {
+        setLoadingCep(
+          false
+        );
+      }
+    };
+
+  /* =======================================================
+     CALCULAR FRETE CORREIOS
+  ======================================================= */
+
+  const calcularSedex =
+    async () => {
+      const cep =
+        onlyNumbers(
+          form.cep
+        );
+
+      if (
+        cep.length !== 8
+      ) {
+        setMessage(
+          "Informe um CEP válido."
         );
 
         return;
       }
 
-      setForm((current) => ({
-        ...current,
-
-        cep:
-          data.cep ||
-          formatCep(cep),
-
-        street:
-          data.logradouro ||
-          "",
-
-        neighborhood:
-          data.bairro ||
-          "",
-
-        city:
-          data.localidade ||
-          "",
-
-        state:
-          data.uf ||
-          "",
-      }));
-
-      setMessage(
-        "Endereço preenchido automaticamente."
-      );
-    } catch {
-      setMessage(
-        "Não foi possível consultar o CEP."
-      );
-    } finally {
-      setLoadingCep(false);
-    }
-  };
-const calcularSedex = async () => {
-  const cep = onlyNumbers(form.cep);
-
-  if (cep.length !== 8) {
-    setMessage("Informe um CEP válido.");
-    return;
-  }
-
-  try {
-    setLoadingSedex(true);
-    setMessage("Calculando SEDEX...");
-
-    const result = await api(
-      "/api/frete/sedex",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          cep,
-        }),
-      }
-    );
-
-    setSedexQuote(result);
-
-    setMessage(
-      `SEDEX: ${money(result.price)} — prazo aproximado de ${result.deliveryTime} dias úteis.`
-    );
-  } catch (error) {
-    setSedexQuote(null);
-    setMessage(error.message);
-  } finally {
-    setLoadingSedex(false);
-  }
-};
-  const submit = async (
-    event
-  ) => {
-    event.preventDefault();
-
-    if (!form.deliveryMethod) {
-      setMessage(
-        "Escolha a forma de entrega."
-      );
-
-      return;
-    }
-if (
-  form.deliveryMethod === "nuvem_envio" &&
-  !sedexQuote
-) {
-  setMessage(
-    "Calcule o valor do SEDEX antes de continuar."
-  );
-
-  return;
-}
-    if (
-      onlyNumbers(
-        form.cpf
-      ).length !== 11
-    ) {
-      setMessage(
-        "Informe um CPF válido."
-      );
-
-      return;
-    }
-
-    if (
-      onlyNumbers(
-        form.cep
-      ).length !== 8
-    ) {
-      setMessage(
-        "Informe um CEP válido."
-      );
-
-      return;
-    }
-
-    setLoading(true);
-
-    setMessage(
-      "Criando pedido..."
-    );
-
-    const completeAddress = [
-      form.street,
-
-      form.number &&
-        `nº ${form.number}`,
-
-      form.complement,
-
-      form.neighborhood,
-
-      form.city,
-
-      form.state,
-
-      form.cep &&
-        `CEP ${form.cep}`,
-    ]
-      .filter(Boolean)
-      .join(", ");
-
-    try {
-      const data =
-        await api(
-          "/api/checkout",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                customer: {
-                  name:
-                    form.name,
-
-                  cpf:
-                    onlyNumbers(
-                      form.cpf
-                    ),
-
-                  email:
-                    form.email,
-
-                  phone:
-                    form.phone,
-
-                  address:
-                    completeAddress,
-
-                  cep:
-                    form.cep,
-
-                  street:
-                    form.street,
-
-                  number:
-                    form.number,
-
-                  complement:
-                    form.complement,
-
-                  neighborhood:
-                    form.neighborhood,
-
-                  city:
-                    form.city,
-
-                  state:
-                    form.state,
-                },
-
-                delivery: {
-                  method:
-                    form.deliveryMethod,
-
-                  shipping,
-                },
-
-                items:
-                  cart,
-              }),
-          }
+      try {
+        setLoadingSedex(
+          true
         );
 
-      const paymentOrder = {
-  orderId: data.orderId,
-  subtotal,
-  shipping: data.shippingFee,
-  total: data.total,
-  deliveryMethod: form.deliveryMethod,
-  customer: {
-    ...form,
-    cpf: onlyNumbers(form.cpf),
-  },
-};
+        setShippingOptions(
+          []
+        );
 
-      localStorage.setItem(
-        "paymentOrder",
-        JSON.stringify(
+        setSelectedShipping(
+          null
+        );
+
+        setMessage(
+          "Calculando opções de frete..."
+        );
+
+        const result =
+          await api(
+            "/api/frete/sedex",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  cep,
+                }),
+            }
+          );
+
+        const options =
+          Array.isArray(
+            result.options
+          )
+            ? result.options
+            : [];
+
+        setShippingOptions(
+          options
+        );
+
+        if (
+          options.length
+        ) {
+          setSelectedShipping(
+            options[0]
+          );
+
+          setMessage(
+            "Escolha a opção de frete desejada."
+          );
+        } else {
+          setMessage(
+            "Nenhuma opção dos Correios disponível para esse CEP."
+          );
+        }
+      } catch (error) {
+        setShippingOptions(
+          []
+        );
+
+        setSelectedShipping(
+          null
+        );
+
+        setMessage(
+          error.message
+        );
+      } finally {
+        setLoadingSedex(
+          false
+        );
+      }
+    };
+
+  /* =======================================================
+     CRIAR PEDIDO
+  ======================================================= */
+
+  const submit =
+    async (
+      event
+    ) => {
+      event.preventDefault();
+
+      if (
+        !form.deliveryMethod
+      ) {
+        setMessage(
+          "Escolha a forma de entrega."
+        );
+
+        return;
+      }
+
+      if (
+        form.deliveryMethod ===
+          "nuvem_envio" &&
+        !selectedShipping
+      ) {
+        setMessage(
+          "Calcule e escolha uma opção de frete antes de continuar."
+        );
+
+        return;
+      }
+
+      if (
+        onlyNumbers(
+          form.cpf
+        ).length !== 11
+      ) {
+        setMessage(
+          "Informe um CPF válido."
+        );
+
+        return;
+      }
+
+      if (
+        onlyNumbers(
+          form.cep
+        ).length !== 8
+      ) {
+        setMessage(
+          "Informe um CEP válido."
+        );
+
+        return;
+      }
+
+      setLoading(
+        true
+      );
+
+      setMessage(
+        "Criando pedido..."
+      );
+
+      const completeAddress =
+        [
+          form.street,
+
+          form.number &&
+            `nº ${form.number}`,
+
+          form.complement,
+
+          form.neighborhood,
+
+          form.city,
+
+          form.state,
+
+          form.cep &&
+            `CEP ${form.cep}`,
+        ]
+          .filter(
+            Boolean
+          )
+          .join(
+            ", "
+          );
+
+      try {
+        const data =
+          await api(
+            "/api/checkout",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  customer: {
+                    name:
+                      form.name,
+
+                    cpf:
+                      onlyNumbers(
+                        form.cpf
+                      ),
+
+                    email:
+                      form.email,
+
+                    phone:
+                      form.phone,
+
+                    address:
+                      completeAddress,
+
+                    cep:
+                      form.cep,
+
+                    street:
+                      form.street,
+
+                    number:
+                      form.number,
+
+                    complement:
+                      form.complement,
+
+                    neighborhood:
+                      form.neighborhood,
+
+                    city:
+                      form.city,
+
+                    state:
+                      form.state,
+                  },
+
+                  delivery: {
+                    method:
+                      form.deliveryMethod,
+
+                    shipping,
+
+                    serviceId:
+                      selectedShipping
+                        ?.serviceId ||
+                      null,
+
+                    service:
+                      selectedShipping
+                        ?.service ||
+                      null,
+
+                    deliveryTime:
+                      selectedShipping
+                        ?.deliveryTime ||
+                      null,
+                  },
+
+                  items:
+                    cart,
+                }),
+            }
+          );
+
+        const paymentOrder = {
+          orderId:
+            data.orderId,
+
+          subtotal,
+
+          shipping:
+            data.shippingFee,
+
+          total:
+            data.total,
+
+          deliveryMethod:
+            form.deliveryMethod,
+
+          shippingService:
+            selectedShipping,
+
+          customer: {
+            ...form,
+
+            cpf:
+              onlyNumbers(
+                form.cpf
+              ),
+          },
+        };
+
+        localStorage.setItem(
+          "paymentOrder",
+          JSON.stringify(
+            paymentOrder
+          )
+        );
+
+        setOrder(
           paymentOrder
-        )
-      );
+        );
 
-      setOrder(
-        paymentOrder
-      );
+        setMessage(
+          `Pedido #${data.orderId} criado com sucesso.`
+        );
+      } catch (
+        error
+      ) {
+        setMessage(
+          error.message
+        );
+      } finally {
+        setLoading(
+          false
+        );
+      }
+    };
 
-      setMessage(
-        `Pedido #${data.orderId} criado com sucesso.`
-      );
-    } catch (error) {
-      setMessage(
-        error.message
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!cart.length) {
+  if (
+    !cart.length
+  ) {
     return (
       <main className="section">
         <h1>
@@ -1109,7 +1487,11 @@ if (
         </h1>
 
         {!order ? (
-          <form onSubmit={submit}>
+          <form
+            onSubmit={
+              submit
+            }
+          >
             <h3>
               Seus dados
             </h3>
@@ -1117,7 +1499,9 @@ if (
             <input
               required
               placeholder="Nome completo"
-              value={form.name}
+              value={
+                form.name
+              }
               onChange={(e) =>
                 updateField(
                   "name",
@@ -1131,7 +1515,9 @@ if (
               placeholder="CPF"
               inputMode="numeric"
               maxLength="14"
-              value={form.cpf}
+              value={
+                form.cpf
+              }
               onChange={(e) =>
                 updateField(
                   "cpf",
@@ -1146,7 +1532,9 @@ if (
               required
               type="email"
               placeholder="E-mail"
-              value={form.email}
+              value={
+                form.email
+              }
               onChange={(e) =>
                 updateField(
                   "email",
@@ -1158,7 +1546,9 @@ if (
             <input
               required
               placeholder="WhatsApp"
-              value={form.phone}
+              value={
+                form.phone
+              }
               onChange={(e) =>
                 updateField(
                   "phone",
@@ -1176,7 +1566,9 @@ if (
               placeholder="CEP"
               inputMode="numeric"
               maxLength="9"
-              value={form.cep}
+              value={
+                form.cep
+              }
               onChange={(e) => {
                 const formatted =
                   formatCep(
@@ -1188,10 +1580,19 @@ if (
                   formatted
                 );
 
+                setShippingOptions(
+                  []
+                );
+
+                setSelectedShipping(
+                  null
+                );
+
                 if (
                   onlyNumbers(
                     formatted
-                  ).length === 8
+                  ).length ===
+                  8
                 ) {
                   buscarCep(
                     formatted
@@ -1209,7 +1610,9 @@ if (
             <input
               required
               placeholder="Rua / Avenida"
-              value={form.street}
+              value={
+                form.street
+              }
               readOnly
             />
 
@@ -1225,21 +1628,27 @@ if (
             <input
               required
               placeholder="Cidade"
-              value={form.city}
+              value={
+                form.city
+              }
               readOnly
             />
 
             <input
               required
               placeholder="UF"
-              value={form.state}
+              value={
+                form.state
+              }
               readOnly
             />
 
             <input
               required
               placeholder="Número"
-              value={form.number}
+              value={
+                form.number
+              }
               onChange={(e) =>
                 updateField(
                   "number",
@@ -1267,10 +1676,15 @@ if (
 
             <label
               style={{
-                display: "block",
-                padding: "18px",
+                display:
+                  "block",
+
+                padding:
+                  "18px",
+
                 border:
                   "1px solid #ddd",
+
                 marginBottom:
                   "12px",
               }}
@@ -1283,32 +1697,50 @@ if (
                   form.deliveryMethod ===
                   "salvador"
                 }
-                onChange={(e) =>
+                onChange={(e) => {
                   updateField(
                     "deliveryMethod",
                     e.target.value
-                  )
-                }
+                  );
+
+                  setShippingOptions(
+                    []
+                  );
+
+                  setSelectedShipping(
+                    null
+                  );
+                }}
               />
 
               {" "}
 
               <strong>
-                ENTREGA FIXA - SALVADOR — R$ 15,00
+                ENTREGA FIXA -
+                SALVADOR — R$
+                15,00
               </strong>
 
               <p>
-                Entregas de segunda a sábado.
-                Rotas organizadas até às 15h.
+                Entregas de
+                segunda a
+                sábado. Rotas
+                organizadas até
+                às 15h.
               </p>
             </label>
 
             <label
               style={{
-                display: "block",
-                padding: "18px",
+                display:
+                  "block",
+
+                padding:
+                  "18px",
+
                 border:
                   "1px solid #ddd",
+
                 marginBottom:
                   "12px",
               }}
@@ -1321,32 +1753,50 @@ if (
                   form.deliveryMethod ===
                   "lauro"
                 }
-                onChange={(e) =>
+                onChange={(e) => {
                   updateField(
                     "deliveryMethod",
                     e.target.value
-                  )
-                }
+                  );
+
+                  setShippingOptions(
+                    []
+                  );
+
+                  setSelectedShipping(
+                    null
+                  );
+                }}
               />
 
               {" "}
 
               <strong>
-                ENTREGA FIXA - LAURO DE FREITAS — R$ 15,00
+                ENTREGA FIXA -
+                LAURO DE FREITAS
+                — R$ 15,00
               </strong>
 
               <p>
-                Entregas de segunda a sábado.
-                Rotas organizadas até às 15h.
+                Entregas de
+                segunda a
+                sábado. Rotas
+                organizadas até
+                às 15h.
               </p>
             </label>
 
             <label
               style={{
-                display: "block",
-                padding: "18px",
+                display:
+                  "block",
+
+                padding:
+                  "18px",
+
                 border:
                   "1px solid #ddd",
+
                 marginBottom:
                   "12px",
               }}
@@ -1359,91 +1809,202 @@ if (
                   form.deliveryMethod ===
                   "uber_99"
                 }
-                onChange={(e) =>
+                onChange={(e) => {
                   updateField(
                     "deliveryMethod",
                     e.target.value
-                  )
-                }
+                  );
+
+                  setShippingOptions(
+                    []
+                  );
+
+                  setSelectedShipping(
+                    null
+                  );
+                }}
               />
 
               {" "}
 
               <strong>
-                Uber Flash / 99 Entrega
+                Uber Flash / 99
+                Entrega
               </strong>
 
               <p>
-                Valor do frete definido pelo aplicativo
-                no momento da solicitação.
+                Valor do frete
+                definido pelo
+                aplicativo no
+                momento da
+                solicitação.
               </p>
             </label>
 
-            <label
+            <div
               style={{
-                display: "block",
-                padding: "18px",
+                display:
+                  "block",
+
+                padding:
+                  "18px",
+
                 border:
                   "1px solid #ddd",
+
                 marginBottom:
                   "20px",
               }}
             >
-              <input
-                type="radio"
-                name="delivery"
-                value="nuvem_envio"
-                checked={
-                  form.deliveryMethod ===
-                  "nuvem_envio"
-                }
-                onChange={(e) =>
-                  updateField(
-                    "deliveryMethod",
-                    e.target.value
-                  )
-                }
-              />
+              <label>
+                <input
+                  type="radio"
+                  name="delivery"
+                  value="nuvem_envio"
+                  checked={
+                    form.deliveryMethod ===
+                    "nuvem_envio"
+                  }
+                  onChange={(e) => {
+                    updateField(
+                      "deliveryMethod",
+                      e.target.value
+                    );
 
-              {" "}
+                    setShippingOptions(
+                      []
+                    );
 
-              <strong>
-                Nuvem Envio / Correios SEDEX
-              </strong>
-{form.deliveryMethod === "nuvem_envio" && (
-  <div>
-    <button
-      type="button"
-      className="btn"
-      onClick={calcularSedex}
-      disabled={loadingSedex}
-    >
-      {loadingSedex
-        ? "Calculando..."
-        : "Calcular SEDEX"}
-    </button>
+                    setSelectedShipping(
+                      null
+                    );
+                  }}
+                />
 
-    {sedexQuote && (
-      <p>
-        <strong>
-          SEDEX — {money(sedexQuote.price)}
-        </strong>
-        <br />
-        Prazo aproximado:{" "}
-        {sedexQuote.deliveryTime} dias úteis.
-      </p>
-    )}
-  </div>
-)}
+                {" "}
+
+                <strong>
+                  Correios
+                </strong>
+              </label>
+
               <p>
-  Envio para todo o Brasil .
-  Informe o CEP para calcular o SEDEX.
-</p>
-            </label>
+                PAC, SEDEX e
+                Mini Envios,
+                conforme
+                disponibilidade
+                para o CEP.
+              </p>
+
+              {form.deliveryMethod ===
+                "nuvem_envio" && (
+                <>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={
+                      calcularSedex
+                    }
+                    disabled={
+                      loadingSedex
+                    }
+                  >
+                    {loadingSedex
+                      ? "Calculando..."
+                      : "Calcular frete"}
+                  </button>
+
+                  {shippingOptions.length >
+                    0 && (
+                    <div
+                      style={{
+                        marginTop:
+                          "15px",
+                      }}
+                    >
+                      <strong>
+                        Escolha o
+                        frete:
+                      </strong>
+
+                      {shippingOptions.map(
+                        (
+                          option
+                        ) => (
+                          <label
+                            key={
+                              option.serviceId
+                            }
+                            style={{
+                              display:
+                                "block",
+
+                              padding:
+                                "12px",
+
+                              marginTop:
+                                "10px",
+
+                              border:
+                                "1px solid #ddd",
+
+                              cursor:
+                                "pointer",
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name="shippingOption"
+                              checked={
+                                selectedShipping
+                                  ?.serviceId ===
+                                option.serviceId
+                              }
+                              onChange={() =>
+                                setSelectedShipping(
+                                  option
+                                )
+                              }
+                            />
+
+                            {" "}
+
+                            <strong>
+                              {
+                                option.service
+                              }
+                            </strong>
+
+                            {" — "}
+
+                            {money(
+                              option.price
+                            )}
+
+                            <br />
+
+                            <small>
+                              Prazo
+                              aproximado:{" "}
+                              {
+                                option.deliveryTime
+                              }{" "}
+                              dias úteis
+                            </small>
+                          </label>
+                        )
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             <button
               className="btn full"
-              disabled={loading}
+              disabled={
+                loading
+              }
             >
               {loading
                 ? "Criando pedido..."
@@ -1453,38 +2014,58 @@ if (
         ) : (
           <div className="panel">
             <h2>
-              Pedido #{order.orderId}
+              Pedido #
+              {
+                order.orderId
+              }
             </h2>
 
             {order.deliveryMethod ===
               "salvador" && (
               <p>
-                ENTREGA FIXA - SALVADOR — R$ 15,00
+                ENTREGA FIXA -
+                SALVADOR — R$
+                15,00
               </p>
             )}
 
             {order.deliveryMethod ===
               "lauro" && (
               <p>
-                ENTREGA FIXA - LAURO DE FREITAS — R$ 15,00
+                ENTREGA FIXA -
+                LAURO DE FREITAS
+                — R$ 15,00
               </p>
             )}
 
             {order.deliveryMethod ===
               "uber_99" && (
               <p>
-                Uber Flash / 99 Entrega — valor definido pelo aplicativo.
+                Uber Flash / 99
+                Entrega — valor
+                definido pelo
+                aplicativo.
               </p>
             )}
 
             {order.deliveryMethod ===
-              "nuvem_envio" && (
-              <p>
-                Nuvem Envio / Correios SEDEX — cálculo em configuração.
-              </p>
-            )}
+              "nuvem_envio" &&
+              order.shippingService && (
+                <p>
+                  {
+                    order.shippingService
+                      .service
+                  }{" "}
+                  —{" "}
+                  {money(
+                    order.shippingService
+                      .price
+                  )}
+                </p>
+              )}
 
-            {order.total != null ? (
+            {order.total !=
+            null ? (
               <button
                 className="btn full"
                 onClick={() =>
@@ -1493,11 +2074,16 @@ if (
                   )
                 }
               >
-                Continuar para pagamento
+                Continuar para
+                pagamento
               </button>
             ) : (
               <p className="notice">
-                O valor da entrega precisa ser definido antes do pagamento.
+                O valor da
+                entrega precisa
+                ser definido
+                antes do
+                pagamento.
               </p>
             )}
           </div>
@@ -1516,11 +2102,23 @@ if (
         </h3>
 
         {cart.map(
-          (item, index) => (
-            <p key={index}>
+          (
+            item,
+            index
+          ) => (
+            <p
+              key={
+                index
+              }
+            >
               <span>
-                {item.quantity}x{" "}
-                {item.name}
+                {
+                  item.quantity
+                }
+                x{" "}
+                {
+                  item.name
+                }
               </span>
 
               <span>
@@ -1541,7 +2139,9 @@ if (
           </span>
 
           <span>
-            {money(subtotal)}
+            {money(
+              subtotal
+            )}
           </span>
         </p>
 
@@ -1551,15 +2151,17 @@ if (
           </span>
 
           <span>
-            {fixedDelivery
-              ? "R$ 15,00"
+            {shipping !== null
+              ? money(
+                  shipping
+                )
               : form.deliveryMethod
               ? "A definir"
               : "Selecione"}
           </span>
         </p>
 
-        {fixedDelivery && (
+        {shipping !== null && (
           <>
             <hr />
 
@@ -1569,7 +2171,9 @@ if (
               </span>
 
               <span>
-                {money(total)}
+                {money(
+                  total
+                )}
               </span>
             </b>
           </>
@@ -1649,27 +2253,34 @@ function Payment({
 
   useEffect(() => {
     loadPagBankSdk()
-      .catch(console.error);
+      .catch(
+        console.error
+      );
   }, []);
 
   if (!order) {
     return (
       <main className="section">
         <h1>
-          Pedido não encontrado
+          Pedido não
+          encontrado
         </h1>
 
         <Link
           className="btn"
           to="/"
         >
-          Voltar para a loja
+          Voltar para a
+          loja
         </Link>
       </main>
     );
   }
 
-  if (order.total == null) {
+  if (
+    order.total ==
+    null
+  ) {
     return (
       <main className="section">
         <h1>
@@ -1678,22 +2289,11 @@ function Payment({
 
         <div className="panel">
           <p>
-            O valor da entrega ainda precisa ser definido antes do pagamento.
+            O valor da entrega
+            ainda precisa ser
+            definido antes do
+            pagamento.
           </p>
-
-          {order.deliveryMethod ===
-            "uber_99" && (
-            <p>
-              O valor do Uber Flash / 99 Entrega será definido pelo aplicativo.
-            </p>
-          )}
-
-          {order.deliveryMethod ===
-            "nuvem_envio" && (
-            <p>
-              O cálculo do Nuvem Envio / Correios SEDEX ainda está em configuração.
-            </p>
-          )}
         </div>
       </main>
     );
@@ -1703,27 +2303,40 @@ function Payment({
     field,
     value
   ) => {
-    setCardForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setCardForm(
+      (current) => ({
+        ...current,
+
+        [field]:
+          value,
+      })
+    );
   };
 
   const loadInstallments =
-    async (number) => {
+    async (
+      number
+    ) => {
       const bin =
-        onlyNumbers(number).slice(0, 6);
+        onlyNumbers(
+          number
+        ).slice(0, 6);
 
       if (
         bin.length !== 6 ||
         !order?.orderId
       ) {
-        setInstallmentPlans([]);
+        setInstallmentPlans(
+          []
+        );
+
         return;
       }
 
       try {
-        setLoadingPlans(true);
+        setLoadingPlans(
+          true
+        );
 
         const result =
           await api(
@@ -1731,28 +2344,40 @@ function Payment({
           );
 
         const plans =
-          result.plans || [];
+          result.plans ||
+          [];
 
-        setInstallmentPlans(plans);
+        setInstallmentPlans(
+          plans
+        );
 
-        if (plans.length) {
+        if (
+          plans.length
+        ) {
           setInstallments(
-            plans[0].installments
+            plans[0]
+              .installments
           );
         }
-      } catch (error) {
+      } catch (
+        error
+      ) {
         setMessage(
           error.message
         );
       } finally {
-        setLoadingPlans(false);
+        setLoadingPlans(
+          false
+        );
       }
     };
 
   const payPix =
     async () => {
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
         setMessage(
           "Gerando Pix..."
@@ -1762,7 +2387,8 @@ function Payment({
           await api(
             "/api/pagbank/pix",
             {
-              method: "POST",
+              method:
+                "POST",
 
               headers: {
                 "Content-Type":
@@ -1777,23 +2403,33 @@ function Payment({
             }
           );
 
-        setPix(result);
+        setPix(
+          result
+        );
 
         setMessage(
           "Pix gerado com sucesso."
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         setMessage(
           error.message
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     };
 
   const copyPix =
     async () => {
-      if (!pix?.qrCode) return;
+      if (
+        !pix?.qrCode
+      ) {
+        return;
+      }
 
       try {
         await navigator.clipboard.writeText(
@@ -1813,19 +2449,25 @@ function Payment({
   const payCard =
     async () => {
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
         setMessage(
           "Processando cartão..."
         );
 
-        if (!PAGBANK_PUBLIC_KEY) {
+        if (
+          !PAGBANK_PUBLIC_KEY
+        ) {
           throw new Error(
             "Chave pública do PagBank não configurada."
           );
         }
 
-        if (!window.PagSeguro) {
+        if (
+          !window.PagSeguro
+        ) {
           await loadPagBankSdk();
         }
 
@@ -1834,25 +2476,50 @@ function Payment({
             cardForm.number
           );
 
-         const encrypted =
-  window.PagSeguro.encryptCard({
-    publicKey: PAGBANK_PUBLIC_KEY,
-    holder: cardForm.holder,
-    number: cardNumber,
-    expMonth: onlyNumbers(cardForm.expMonth),
-    expYear: onlyNumbers(cardForm.expYear),
-    securityCode: onlyNumbers(cardForm.securityCode),
-  });
+        const encrypted =
+          window.PagSeguro.encryptCard(
+            {
+              publicKey:
+                PAGBANK_PUBLIC_KEY,
 
-        if (encrypted.hasErrors) {
+              holder:
+                cardForm.holder,
+
+              number:
+                cardNumber,
+
+              expMonth:
+                onlyNumbers(
+                  cardForm.expMonth
+                ),
+
+              expYear:
+                onlyNumbers(
+                  cardForm.expYear
+                ),
+
+              securityCode:
+                onlyNumbers(
+                  cardForm.securityCode
+                ),
+            }
+          );
+
+        if (
+          encrypted.hasErrors
+        ) {
           throw new Error(
             encrypted.errors
               ?.map(
-                (error) =>
+                (
+                  error
+                ) =>
                   error.message ||
                   error.code
               )
-              .join(", ") ||
+              .join(
+                ", "
+              ) ||
               "Dados do cartão inválidos."
           );
         }
@@ -1861,7 +2528,8 @@ function Payment({
           await api(
             "/api/pagbank/card",
             {
-              method: "POST",
+              method:
+                "POST",
 
               headers: {
                 "Content-Type":
@@ -1882,7 +2550,8 @@ function Payment({
                     ),
 
                   encryptedCard:
-                    encrypted.encryptedCard,
+                    encrypted
+                      .encryptedCard,
 
                   holder: {
                     name:
@@ -1902,7 +2571,10 @@ function Payment({
             "Pagamento processado."
         );
 
-        if (result.status === "PAID") {
+        if (
+          result.status ===
+          "PAID"
+        ) {
           setCart([]);
 
           localStorage.removeItem(
@@ -1913,12 +2585,16 @@ function Payment({
             "Pagamento aprovado! Pedido confirmado."
           );
         }
-      } catch (error) {
+      } catch (
+        error
+      ) {
         setMessage(
           error.message
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     };
 
@@ -1931,19 +2607,28 @@ function Payment({
 
         <div className="panel">
           <h2>
-            Pedido #{order.orderId}
+            Pedido #
+            {
+              order.orderId
+            }
           </h2>
 
           <h3>
-            Escolha como pagar
+            Escolha como
+            pagar
           </h3>
 
           <label
             style={{
-              display: "block",
-              padding: "18px",
+              display:
+                "block",
+
+              padding:
+                "18px",
+
               border:
                 "1px solid #ddd",
+
               marginBottom:
                 "12px",
             }}
@@ -1957,8 +2642,13 @@ function Payment({
                 "pix"
               }
               onChange={() => {
-                setPaymentMethod("pix");
-                setPix(null);
+                setPaymentMethod(
+                  "pix"
+                );
+
+                setPix(
+                  null
+                );
               }}
             />
 
@@ -1969,16 +2659,22 @@ function Payment({
             </strong>
 
             <p>
-              Pagamento à vista.
+              Pagamento à
+              vista.
             </p>
           </label>
 
           <label
             style={{
-              display: "block",
-              padding: "18px",
+              display:
+                "block",
+
+              padding:
+                "18px",
+
               border:
                 "1px solid #ddd",
+
               marginBottom:
                 "20px",
             }}
@@ -1996,18 +2692,22 @@ function Payment({
                   "credit"
                 );
 
-                setPix(null);
+                setPix(
+                  null
+                );
               }}
             />
 
             {" "}
 
             <strong>
-              Cartão de crédito
+              Cartão de
+              crédito
             </strong>
 
             <p>
-              Parcelamento em até 12x.
+              Parcelamento em
+              até 12x.
             </p>
           </label>
 
@@ -2017,8 +2717,12 @@ function Payment({
               {!pix && (
                 <button
                   className="btn full"
-                  disabled={loading}
-                  onClick={payPix}
+                  disabled={
+                    loading
+                  }
+                  onClick={
+                    payPix
+                  }
                 >
                   {loading
                     ? "Gerando Pix..."
@@ -2033,12 +2737,14 @@ function Payment({
                   style={{
                     textAlign:
                       "center",
+
                     marginTop:
                       "20px",
                   }}
                 >
                   <h3>
-                    Pague com Pix
+                    Pague com
+                    Pix
                   </h3>
 
                   <strong>
@@ -2057,8 +2763,10 @@ function Payment({
                         style={{
                           width:
                             "240px",
+
                           maxWidth:
                             "100%",
+
                           margin:
                             "20px auto",
                         }}
@@ -2067,7 +2775,11 @@ function Payment({
                   )}
 
                   <p>
-                    Abra o aplicativo do seu banco e escaneie o QR Code.
+                    Abra o
+                    aplicativo
+                    do seu banco
+                    e escaneie o
+                    QR Code.
                   </p>
 
                   {pix.qrCode && (
@@ -2080,6 +2792,7 @@ function Payment({
                         style={{
                           width:
                             "100%",
+
                           minHeight:
                             "100px",
                         }}
@@ -2087,15 +2800,19 @@ function Payment({
 
                       <button
                         className="btn full"
-                        onClick={copyPix}
+                        onClick={
+                          copyPix
+                        }
                       >
-                        Copiar código Pix
+                        Copiar
+                        código Pix
                       </button>
                     </>
                   )}
 
                   <p>
-                    Aguardando pagamento...
+                    Aguardando
+                    pagamento...
                   </p>
                 </div>
               )}
@@ -2161,9 +2878,12 @@ function Payment({
                 style={{
                   display:
                     "grid",
+
                   gridTemplateColumns:
                     "1fr 1fr 1fr",
-                  gap: "10px",
+
+                  gap:
+                    "10px",
                 }}
               >
                 <input
@@ -2219,7 +2939,8 @@ function Payment({
 
               {loadingPlans ? (
                 <p>
-                  Calculando parcelas...
+                  Calculando
+                  parcelas...
                 </p>
               ) : (
                 <select
@@ -2236,12 +2957,16 @@ function Payment({
                 >
                   {!installmentPlans.length && (
                     <option value="1">
-                      Digite o número do cartão
+                      Digite o
+                      número do
+                      cartão
                     </option>
                   )}
 
                   {installmentPlans.map(
-                    (plan) => (
+                    (
+                      plan
+                    ) => (
                       <option
                         key={
                           plan.installments
@@ -2250,7 +2975,10 @@ function Payment({
                           plan.installments
                         }
                       >
-                        {plan.installments}x de{" "}
+                        {
+                          plan.installments
+                        }
+                        x de{" "}
                         {money(
                           plan.installment_value
                         )}
@@ -2258,7 +2986,8 @@ function Payment({
                         {plan.interest_free
                           ? "sem juros"
                           : `total ${money(
-                              plan.amount?.value
+                              plan.amount
+                                ?.value
                             )}`}
                       </option>
                     )
@@ -2272,7 +3001,9 @@ function Payment({
                   loading ||
                   !installmentPlans.length
                 }
-                onClick={payCard}
+                onClick={
+                  payCard
+                }
               >
                 {loading
                   ? "Processando..."
@@ -2295,11 +3026,23 @@ function Payment({
         </h3>
 
         {cart.map(
-          (item, index) => (
-            <p key={index}>
+          (
+            item,
+            index
+          ) => (
+            <p
+              key={
+                index
+              }
+            >
               <span>
-                {item.quantity}x{" "}
-                {item.name}
+                {
+                  item.quantity
+                }
+                x{" "}
+                {
+                  item.name
+                }
               </span>
 
               <span>
@@ -2332,7 +3075,8 @@ function Payment({
           </span>
 
           <span>
-            {order.shipping != null
+            {order.shipping !=
+            null
               ? money(
                   order.shipping
                 )
@@ -2451,7 +3195,9 @@ function Admin() {
             ? ordersData
             : []
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         setMessage(
           error.message
         );
@@ -2459,27 +3205,40 @@ function Admin() {
     };
 
   useEffect(() => {
-    if (credentials) {
+    if (
+      credentials
+    ) {
       loadData();
     }
-  }, [credentials]);
+  }, [
+    credentials,
+  ]);
 
-  if (!credentials) {
+  if (
+    !credentials
+  ) {
     return (
       <main className="section admin">
         <h1>
-          Painel administrativo
+          Painel
+          administrativo
         </h1>
 
         <form
-          onSubmit={(event) => {
+          onSubmit={(
+            event
+          ) => {
             event.preventDefault();
 
             const encoded =
               btoa(
-                event.target.user.value +
+                event.target
+                  .user
+                  .value +
                   ":" +
-                  event.target.password.value
+                  event.target
+                    .password
+                    .value
               );
 
             localStorage.setItem(
@@ -2512,27 +3271,37 @@ function Admin() {
     );
   }
 
-  const resetForm = () => {
-    setEditingId(null);
+  const resetForm =
+    () => {
+      setEditingId(
+        null
+      );
 
-    setForm({
-      name: "",
-      description: "",
-      price: "",
-      stock: "",
-      sizes: "P,M,G",
-      colors: "",
-      image: "",
-      active: true,
-    });
-  };
+      setForm({
+        name: "",
+        description: "",
+        price: "",
+        stock: "",
+        sizes:
+          "P,M,G",
+        colors: "",
+        image: "",
+        active:
+          true,
+      });
+    };
 
   const uploadImage =
-    async (event) => {
+    async (
+      event
+    ) => {
       const file =
-        event.target.files?.[0];
+        event.target
+          .files?.[0];
 
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
       const formData =
         new FormData();
@@ -2547,7 +3316,8 @@ function Admin() {
           await api(
             "/api/upload",
             {
-              method: "POST",
+              method:
+                "POST",
 
               headers:
                 headers(),
@@ -2560,6 +3330,7 @@ function Admin() {
         setForm(
           (current) => ({
             ...current,
+
             image:
               data.image,
           })
@@ -2568,7 +3339,9 @@ function Admin() {
         setMessage(
           "Foto enviada!"
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         setMessage(
           error.message
         );
@@ -2576,7 +3349,9 @@ function Admin() {
     };
 
   const saveProduct =
-    async (event) => {
+    async (
+      event
+    ) => {
       event.preventDefault();
 
       try {
@@ -2594,7 +3369,8 @@ function Admin() {
             Math.max(
               0,
               Number(
-                form.stock || 0
+                form.stock ||
+                  0
               )
             ),
         };
@@ -2630,7 +3406,9 @@ function Admin() {
         resetForm();
 
         await loadData();
-      } catch (error) {
+      } catch (
+        error
+      ) {
         setMessage(
           error.message
         );
@@ -2638,40 +3416,54 @@ function Admin() {
     };
 
   const editProduct =
-    (product) => {
+    (
+      product
+    ) => {
       setEditingId(
         product.id
       );
 
       setForm({
         name:
-          product.name || "",
+          product.name ||
+          "",
 
         description:
-          product.description || "",
+          product.description ||
+          "",
 
         price:
           (
             Number(
-              product.price || 0
+              product.price ||
+                0
             ) / 100
           )
-            .toFixed(2)
-            .replace(".", ","),
+            .toFixed(
+              2
+            )
+            .replace(
+              ".",
+              ","
+            ),
 
         stock:
           String(
-            product.stock ?? 0
+            product.stock ??
+              0
           ),
 
         sizes:
-          product.sizes || "",
+          product.sizes ||
+          "",
 
         colors:
-          product.colors || "",
+          product.colors ||
+          "",
 
         image:
-          product.image || "",
+          product.image ||
+          "",
 
         active:
           Boolean(
@@ -2681,12 +3473,16 @@ function Admin() {
 
       window.scrollTo({
         top: 0,
-        behavior: "smooth",
+
+        behavior:
+          "smooth",
       });
     };
 
   const deleteProduct =
-    async (id) => {
+    async (
+      id
+    ) => {
       if (
         !window.confirm(
           "Excluir esta peça?"
@@ -2708,30 +3504,38 @@ function Admin() {
         );
 
         await loadData();
-      } catch (error) {
+      } catch (
+        error
+      ) {
         setMessage(
           error.message
         );
       }
     };
 
-  const logout = () => {
-    localStorage.removeItem(
-      "adminCred"
-    );
+  const logout =
+    () => {
+      localStorage.removeItem(
+        "adminCred"
+      );
 
-    setCredentials("");
-  };
+      setCredentials(
+        ""
+      );
+    };
 
   return (
     <main className="section admin">
       <div className="adminhead">
         <h1>
-          Painel HEY BEAUTY
+          Painel HEY
+          BEAUTY
         </h1>
 
         <button
-          onClick={logout}
+          onClick={
+            logout
+          }
         >
           Sair
         </button>
@@ -2758,6 +3562,7 @@ function Admin() {
           onChange={(e) =>
             setForm({
               ...form,
+
               name:
                 e.target.value,
             })
@@ -2772,6 +3577,7 @@ function Admin() {
           onChange={(e) =>
             setForm({
               ...form,
+
               description:
                 e.target.value,
             })
@@ -2788,6 +3594,7 @@ function Admin() {
           onChange={(e) =>
             setForm({
               ...form,
+
               price:
                 e.target.value,
             })
@@ -2806,6 +3613,7 @@ function Admin() {
           onChange={(e) =>
             setForm({
               ...form,
+
               stock:
                 e.target.value,
             })
@@ -2820,6 +3628,7 @@ function Admin() {
           onChange={(e) =>
             setForm({
               ...form,
+
               sizes:
                 e.target.value,
             })
@@ -2834,6 +3643,7 @@ function Admin() {
           onChange={(e) =>
             setForm({
               ...form,
+
               colors:
                 e.target.value,
             })
@@ -2861,10 +3671,13 @@ function Admin() {
             style={{
               width:
                 "180px",
+
               height:
                 "220px",
+
               objectFit:
                 "cover",
+
               marginTop:
                 "15px",
             }}
@@ -2899,7 +3712,9 @@ function Admin() {
 
       <div className="adminlist">
         {products.map(
-          (product) => (
+          (
+            product
+          ) => (
             <div
               key={
                 product.id
@@ -2916,8 +3731,10 @@ function Admin() {
                   style={{
                     width:
                       "70px",
+
                     height:
                       "90px",
+
                     objectFit:
                       "cover",
                   }}
@@ -2925,7 +3742,9 @@ function Admin() {
               )}
 
               <b>
-                {product.name}
+                {
+                  product.name
+                }
               </b>
 
               <span>
@@ -2937,7 +3756,9 @@ function Admin() {
 
                 estoque{" "}
 
-                {product.stock}
+                {
+                  product.stock
+                }
               </span>
 
               <button
@@ -2970,7 +3791,9 @@ function Admin() {
 
       <div className="adminlist">
         {orders.map(
-          (order) => (
+          (
+            order
+          ) => (
             <div
               key={
                 order.id
@@ -2978,7 +3801,9 @@ function Admin() {
             >
               <b>
                 Pedido #
-                {order.id}
+                {
+                  order.id
+                }
               </b>
 
               <span>
@@ -2988,7 +3813,8 @@ function Admin() {
 
                 {" · "}
 
-                {order.total != null
+                {order.total !=
+                null
                   ? money(
                       order.total
                     )
@@ -3012,7 +3838,9 @@ function Admin() {
 ========================================================= */
 
 createRoot(
-  document.getElementById("root")
+  document.getElementById(
+    "root"
+  )
 ).render(
   <BrowserRouter>
     <App />

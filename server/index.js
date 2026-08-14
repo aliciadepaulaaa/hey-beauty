@@ -1172,23 +1172,92 @@ app.post(
       });
     }
 
-    let shippingFee = null;
+   let shippingFee = null;
 
-    let shippingStatus =
-      "pending_quote";
+let shippingStatus =
+  "pending_quote";
 
-    if (
-      delivery.method ===
-        "salvador" ||
-      delivery.method ===
-        "lauro"
-    ) {
-      shippingFee =
-        FIXED_SHIPPING;
+let shippingService =
+  null;
 
-      shippingStatus =
-        "calculated";
-    }
+let shippingServiceId =
+  null;
+
+let shippingDeliveryTime =
+  null;
+
+/* ENTREGA FIXA */
+if (
+  delivery.method ===
+    "salvador" ||
+  delivery.method ===
+    "lauro"
+) {
+  shippingFee =
+    FIXED_SHIPPING;
+
+  shippingStatus =
+    "calculated";
+}
+
+/* CORREIOS / MELHOR ENVIO */
+if (
+  delivery.method ===
+  "nuvem_envio"
+) {
+  const sentShipping =
+    Number(
+      delivery.shipping
+    );
+
+  if (
+    !Number.isFinite(
+      sentShipping
+    ) ||
+    sentShipping <= 0
+  ) {
+    return res
+      .status(400)
+      .json({
+        error:
+          "Calcule e escolha uma opção dos Correios antes de continuar.",
+      });
+  }
+
+  shippingFee =
+    Math.round(
+      sentShipping
+    );
+
+  shippingStatus =
+    "calculated";
+
+  shippingService =
+    delivery.service ||
+    "Correios";
+
+  shippingServiceId =
+    delivery.serviceId ||
+    null;
+
+  shippingDeliveryTime =
+    Number(
+      delivery.deliveryTime ||
+      0
+    ) || null;
+}
+
+/* UBER / 99 */
+if (
+  delivery.method ===
+  "uber_99"
+) {
+  shippingFee =
+    null;
+
+  shippingStatus =
+    "pending_quote";
+}
 
     const total =
       shippingFee ===
@@ -1264,18 +1333,28 @@ app.post(
       address:
         customer.address,
 
-      delivery_method:
-        delivery.method,
+      
+        delivery_method:
+  delivery.method,
 
-      shipping_fee:
-        shippingFee,
+shipping_fee:
+  shippingFee,
 
-      shipping_status:
-        shippingStatus,
+shipping_status:
+  shippingStatus,
 
-      subtotal,
+shipping_service:
+  shippingService,
 
-      total,
+shipping_service_id:
+  shippingServiceId,
+
+shipping_delivery_time:
+  shippingDeliveryTime,
+
+subtotal,
+
+total,
 
       items:
         details,
@@ -2361,60 +2440,68 @@ app.post(
           });
       }
 
-      const sedex =
-        Array.isArray(data)
-          ? data.find(
-              (service) =>
-                Number(
-                  service.id
-                ) === 2
-            )
-          : null;
+      const correiosIds = [1, 2, 17];
 
-      if (
-        !sedex ||
-        sedex.error
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              sedex?.error ||
-              "SEDEX indisponível para este CEP.",
-          });
-      }
-
-      const shippingCents =
-        Math.round(
-          Number(
-            sedex.custom_price ||
-            sedex.price
-          ) * 100
-        );
-
-      res.json({
-        serviceId: 2,
+const options = Array.isArray(data)
+  ? data
+      .filter((service) =>
+        correiosIds.includes(
+          Number(service.id)
+        )
+      )
+      .filter(
+        (service) =>
+          !service.error &&
+          service.price
+      )
+      .map((service) => ({
+        serviceId:
+          Number(service.id),
 
         service:
-          "SEDEX",
+          service.name,
 
         company:
           "Correios",
 
         price:
-          shippingCents,
+          Math.round(
+            Number(
+              service.custom_price ||
+                service.price
+            ) * 100
+          ),
 
         deliveryTime:
           Number(
-            sedex.custom_delivery_time ||
-            sedex.delivery_time
+            service.custom_delivery_time ||
+              service.delivery_time
           ),
 
         deliveryRange:
-          sedex.custom_delivery_range ||
-          sedex.delivery_range ||
+          service.custom_delivery_range ||
+          service.delivery_range ||
           null,
-      });
+      }))
+  : [];
+
+if (!options.length) {
+  return res
+    .status(400)
+    .json({
+      error:
+        "Nenhuma opção dos Correios disponível para este CEP.",
+    });
+}
+
+options.sort(
+  (a, b) =>
+    a.price - b.price
+);
+
+res.json({
+  options,
+});
     } catch (error) {
       console.error(
         "Erro frete SEDEX:",
