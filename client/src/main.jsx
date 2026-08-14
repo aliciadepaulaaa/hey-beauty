@@ -22,6 +22,9 @@ const API_URL =
 
 const LOCAL_SHIPPING = 1500;
 
+const PAGBANK_PUBLIC_KEY =
+  import.meta.env.VITE_PAGBANK_PUBLIC_KEY || "";
+
 /* =========================================================
    FUNÇÕES
 ========================================================= */
@@ -33,27 +36,40 @@ const money = (value) =>
   });
 
 const parsePrice = (value) => {
-  if (typeof value === "number") return value;
+  if (typeof value === "number") {
+    return value;
+  }
 
   let text = String(value ?? "").trim();
 
-  if (!text) return 0;
+  if (!text) {
+    return 0;
+  }
 
   text = text.replace(/\s/g, "");
 
   if (text.includes(",") && text.includes(".")) {
-    text = text.replace(/\./g, "").replace(",", ".");
+    text = text
+      .replace(/\./g, "")
+      .replace(",", ".");
   } else {
     text = text.replace(",", ".");
   }
 
   const number = Number(text);
 
-  return Number.isFinite(number) ? number : 0;
+  return Number.isFinite(number)
+    ? number
+    : 0;
 };
 
+const onlyNumbers = (value) =>
+  String(value || "").replace(/\D/g, "");
+
 const imageUrl = (image) => {
-  if (!image) return "";
+  if (!image) {
+    return "";
+  }
 
   if (
     image.startsWith("http://") ||
@@ -71,15 +87,22 @@ const api = async (url, options = {}) => {
       ? url
       : API_URL + url;
 
-  const response = await fetch(finalUrl, options);
+  const response =
+    await fetch(
+      finalUrl,
+      options
+    );
 
-  const data = await response
-    .json()
-    .catch(() => ({}));
+  const data =
+    await response
+      .json()
+      .catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
-      data.error || "Ocorreu um erro."
+      data.error ||
+      data.message ||
+      "Ocorreu um erro."
     );
   }
 
@@ -87,19 +110,78 @@ const api = async (url, options = {}) => {
 };
 
 /* =========================================================
+   PAGBANK SDK
+========================================================= */
+
+const loadPagBankSdk = () =>
+  new Promise((resolve, reject) => {
+    if (window.PagSeguro) {
+      resolve(window.PagSeguro);
+      return;
+    }
+
+    const existing =
+      document.querySelector(
+        'script[data-pagbank-sdk="true"]'
+      );
+
+    if (existing) {
+      existing.addEventListener(
+        "load",
+        () => resolve(window.PagSeguro)
+      );
+
+      existing.addEventListener(
+        "error",
+        reject
+      );
+
+      return;
+    }
+
+    const script =
+      document.createElement("script");
+
+    script.src =
+      "https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js";
+
+    script.async = true;
+
+    script.dataset.pagbankSdk =
+      "true";
+
+    script.onload = () =>
+      resolve(window.PagSeguro);
+
+    script.onerror = () =>
+      reject(
+        new Error(
+          "Não foi possível carregar o PagBank."
+        )
+      );
+
+    document.body.appendChild(
+      script
+    );
+  });
+
+/* =========================================================
    APP
 ========================================================= */
 
 function App() {
-  const [cart, setCart] = useState(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem("cart") || "[]"
-      );
-    } catch {
-      return [];
-    }
-  });
+  const [cart, setCart] =
+    useState(() => {
+      try {
+        return JSON.parse(
+          localStorage.getItem(
+            "cart"
+          ) || "[]"
+        );
+      } catch {
+        return [];
+      }
+    });
 
   useEffect(() => {
     localStorage.setItem(
@@ -114,15 +196,18 @@ function App() {
     color = ""
   ) => {
     setCart((currentCart) => {
-      const index = currentCart.findIndex(
-        (item) =>
-          item.id === product.id &&
-          item.size === size &&
-          item.color === color
-      );
+      const index =
+        currentCart.findIndex(
+          (item) =>
+            item.id === product.id &&
+            item.size === size &&
+            item.color === color
+        );
 
       if (index >= 0) {
-        const updated = [...currentCart];
+        const updated = [
+          ...currentCart,
+        ];
 
         updated[index] = {
           ...updated[index],
@@ -135,6 +220,7 @@ function App() {
 
       return [
         ...currentCart,
+
         {
           id: product.id,
           name: product.name,
@@ -148,7 +234,9 @@ function App() {
     });
   };
 
-  const removeFromCart = (index) => {
+  const removeFromCart = (
+    index
+  ) => {
     setCart((currentCart) =>
       currentCart.filter(
         (_, i) => i !== index
@@ -159,12 +247,19 @@ function App() {
   return (
     <>
       <header>
-        <Link className="brand" to="/">
+
+        <Link
+          className="brand"
+          to="/"
+        >
           HEY BEAUTY
         </Link>
 
         <nav>
-          <Link to="/">Produtos</Link>
+
+          <Link to="/">
+            Produtos
+          </Link>
 
           <Link to="/carrinho">
             Carrinho (
@@ -179,10 +274,13 @@ function App() {
           <Link to="/admin">
             Admin
           </Link>
+
         </nav>
+
       </header>
 
       <Routes>
+
         <Route
           path="/"
           element={<Home />}
@@ -202,7 +300,9 @@ function App() {
           element={
             <Cart
               cart={cart}
-              removeFromCart={removeFromCart}
+              removeFromCart={
+                removeFromCart
+              }
             />
           }
         />
@@ -228,6 +328,7 @@ function App() {
           path="/admin"
           element={<Admin />}
         />
+
       </Routes>
     </>
   );
@@ -255,23 +356,31 @@ function Home() {
       })
       .catch((error) => {
         console.error(error);
-        setError(error.message);
+
+        setError(
+          error.message
+        );
       });
   }, []);
 
   return (
     <main>
+
       <section className="hero">
+
         <div>
-          <span>HEY BEAUTY</span>
+
+          <span>
+            HEY BEAUTY
+          </span>
 
           <h1>
             Seu estilo começa aqui.
           </h1>
 
           <p>
-            Escolha suas peças favoritas e
-            encontre seu próximo look.
+            Escolha suas peças favoritas
+            e encontre seu próximo look.
           </p>
 
           <a
@@ -280,14 +389,19 @@ function Home() {
           >
             Ver produtos
           </a>
+
         </div>
+
       </section>
 
       <section
         id="produtos"
         className="section"
       >
-        <h2>Nossos produtos</h2>
+
+        <h2>
+          Nossos produtos
+        </h2>
 
         {error && (
           <p className="notice">
@@ -296,46 +410,73 @@ function Home() {
         )}
 
         <div className="grid">
-          {products.map((product) => (
-            <article
-              className="card"
-              key={product.id}
-            >
-              {product.image ? (
-                <img
-                  src={imageUrl(product.image)}
-                  alt={product.name}
-                />
-              ) : (
-                <div className="placeholder">
-                  FOTO DA PEÇA
+
+          {products.map(
+            (product) => (
+
+              <article
+                className="card"
+                key={product.id}
+              >
+
+                {product.image ? (
+
+                  <img
+                    src={imageUrl(
+                      product.image
+                    )}
+                    alt={
+                      product.name
+                    }
+                  />
+
+                ) : (
+
+                  <div className="placeholder">
+                    FOTO DA PEÇA
+                  </div>
+
+                )}
+
+                <div className="cardbody">
+
+                  <h3>
+                    {product.name}
+                  </h3>
+
+                  <p>
+                    {
+                      product.description
+                    }
+                  </p>
+
+                  <strong>
+                    {money(
+                      product.price
+                    )}
+                  </strong>
+
+                  <Link
+                    className="btn full"
+                    to={
+                      "/produto/" +
+                      product.id
+                    }
+                  >
+                    Ver detalhes
+                  </Link>
+
                 </div>
-              )}
 
-              <div className="cardbody">
-                <h3>
-                  {product.name}
-                </h3>
+              </article>
 
-                <p>
-                  {product.description}
-                </p>
+            )
+          )}
 
-                <strong>
-                  {money(product.price)}
-                </strong>
-
-                <Link
-                  className="btn full"
-                  to={`/produto/${product.id}`}
-                >
-                  Ver detalhes
-                </Link>
-              </div>
-            </article>
-          ))}
         </div>
+
       </section>
+
     </main>
   );
 }
@@ -344,8 +485,11 @@ function Home() {
    PRODUTO
 ========================================================= */
 
-function ProductPage({ addToCart }) {
-  const { id } = useParams();
+function ProductPage({
+  addToCart,
+}) {
+  const { id } =
+    useParams();
 
   return (
     <Product
@@ -374,13 +518,21 @@ function Product({
   useEffect(() => {
     api("/api/products")
       .then((data) => {
-        if (!Array.isArray(data)) return;
+        if (
+          !Array.isArray(data)
+        ) {
+          return;
+        }
 
-        const found = data.find(
-          (item) => item.id == id
+        const found =
+          data.find(
+            (item) =>
+              item.id == id
+          );
+
+        setProduct(
+          found || null
         );
-
-        setProduct(found || null);
       })
       .catch(console.error);
   }, [id]);
@@ -394,17 +546,25 @@ function Product({
   }
 
   const add = () => {
-    if (product.sizes && !size) {
+    if (
+      product.sizes &&
+      !size
+    ) {
       setMessage(
         "Selecione o tamanho."
       );
+
       return;
     }
 
-    if (product.colors && !color) {
+    if (
+      product.colors &&
+      !color
+    ) {
       setMessage(
         "Selecione a cor."
       );
+
       return;
     }
 
@@ -421,26 +581,40 @@ function Product({
 
   return (
     <main className="section product">
+
       <div>
+
         {product.image ? (
+
           <img
-            src={imageUrl(product.image)}
-            alt={product.name}
+            src={imageUrl(
+              product.image
+            )}
+            alt={
+              product.name
+            }
           />
+
         ) : (
+
           <div className="placeholder big">
             FOTO
           </div>
+
         )}
+
       </div>
 
       <div>
+
         <h1>
           {product.name}
         </h1>
 
         <h2>
-          {money(product.price)}
+          {money(
+            product.price
+          )}
         </h2>
 
         <p>
@@ -449,14 +623,19 @@ function Product({
 
         {product.sizes && (
           <>
-            <label>Tamanho</label>
+            <label>
+              Tamanho
+            </label>
 
             <select
               value={size}
               onChange={(e) =>
-                setSize(e.target.value)
+                setSize(
+                  e.target.value
+                )
               }
             >
+
               <option value="">
                 Selecione
               </option>
@@ -471,20 +650,26 @@ function Product({
                     {item}
                   </option>
                 ))}
+
             </select>
           </>
         )}
 
         {product.colors && (
           <>
-            <label>Cor</label>
+            <label>
+              Cor
+            </label>
 
             <select
               value={color}
               onChange={(e) =>
-                setColor(e.target.value)
+                setColor(
+                  e.target.value
+                )
               }
             >
+
               <option value="">
                 Selecione
               </option>
@@ -499,6 +684,7 @@ function Product({
                     {item}
                   </option>
                 ))}
+
             </select>
           </>
         )}
@@ -515,7 +701,9 @@ function Product({
             {message}
           </p>
         )}
+
       </div>
+
     </main>
   );
 }
@@ -528,15 +716,18 @@ function Cart({
   cart,
   removeFromCart,
 }) {
-  const total = cart.reduce(
-    (sum, item) =>
-      sum +
-      item.price * item.quantity,
-    0
-  );
+  const total =
+    cart.reduce(
+      (sum, item) =>
+        sum +
+        item.price *
+          item.quantity,
+      0
+    );
 
   return (
     <main className="section">
+
       <h1>
         Seu carrinho
       </h1>
@@ -556,19 +747,25 @@ function Cart({
         </>
       ) : (
         <>
+
           <div className="cart">
+
             {cart.map(
               (item, index) => (
+
                 <div
                   className="cartrow"
                   key={index}
                 >
+
                   <div>
+
                     <b>
                       {item.name}
                     </b>
 
                     <small>
+
                       {item.size &&
                         `Tamanho: ${item.size} `}
 
@@ -578,7 +775,9 @@ function Cart({
                       {" · "}
 
                       {item.quantity}x
+
                     </small>
+
                   </div>
 
                   <strong>
@@ -590,18 +789,24 @@ function Cart({
 
                   <button
                     onClick={() =>
-                      removeFromCart(index)
+                      removeFromCart(
+                        index
+                      )
                     }
                   >
                     Excluir
                   </button>
+
                 </div>
+
               )
             )}
+
           </div>
 
           <div className="total">
-            Total: {money(total)}
+            Total:{" "}
+            {money(total)}
           </div>
 
           <Link
@@ -610,17 +815,21 @@ function Cart({
           >
             Continuar para entrega
           </Link>
+
         </>
       )}
+
     </main>
   );
 }
 
 /* =========================================================
-   CHECKOUT / ENTREGA
+   CHECKOUT
 ========================================================= */
 
-function Checkout({ cart }) {
+function Checkout({
+  cart,
+}) {
   const navigate =
     useNavigate();
 
@@ -651,20 +860,24 @@ function Checkout({ cart }) {
   const [loading, setLoading] =
     useState(false);
 
-  const subtotal = cart.reduce(
-    (sum, item) =>
-      sum +
-      item.price * item.quantity,
-    0
-  );
+  const subtotal =
+    cart.reduce(
+      (sum, item) =>
+        sum +
+        item.price *
+          item.quantity,
+      0
+    );
 
   const shipping =
-    form.deliveryMethod === "hey_beauty"
+    form.deliveryMethod ===
+    "hey_beauty"
       ? LOCAL_SHIPPING
       : 0;
 
   const national =
-    form.deliveryMethod === "national";
+    form.deliveryMethod ===
+    "national";
 
   const total =
     subtotal + shipping;
@@ -673,20 +886,25 @@ function Checkout({ cart }) {
     field,
     value
   ) => {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setForm(
+      (current) => ({
+        ...current,
+        [field]: value,
+      })
+    );
   };
 
   const submit =
     async (event) => {
       event.preventDefault();
 
-      if (!form.deliveryMethod) {
+      if (
+        !form.deliveryMethod
+      ) {
         setMessage(
           "Escolha a forma de entrega."
         );
+
         return;
       }
 
@@ -778,13 +996,15 @@ function Checkout({ cart }) {
                         : shipping,
                   },
 
-                  items: cart,
+                  items:
+                    cart,
                 }),
             }
           );
 
         const paymentOrder = {
-          orderId: data.orderId,
+          orderId:
+            data.orderId,
 
           subtotal,
 
@@ -832,6 +1052,7 @@ function Checkout({ cart }) {
   if (!cart.length) {
     return (
       <main className="section">
+
         <h1>
           Carrinho vazio
         </h1>
@@ -842,15 +1063,10 @@ function Checkout({ cart }) {
         >
           Voltar
         </Link>
+
       </main>
     );
   }
-
-  const goToPayment = () => {
-    navigate(
-      "/pagamento"
-    );
-  };
 
   return (
     <main className="section checkout">
@@ -950,7 +1166,9 @@ function Checkout({ cart }) {
 
             <input
               placeholder="Complemento"
-              value={form.complement}
+              value={
+                form.complement
+              }
               onChange={(e) =>
                 updateField(
                   "complement",
@@ -962,7 +1180,9 @@ function Checkout({ cart }) {
             <input
               required
               placeholder="Bairro"
-              value={form.neighborhood}
+              value={
+                form.neighborhood
+              }
               onChange={(e) =>
                 updateField(
                   "neighborhood",
@@ -991,14 +1211,17 @@ function Checkout({ cart }) {
               onChange={(e) =>
                 updateField(
                   "state",
-                  e.target.value.toUpperCase()
+                  e.target.value
+                    .toUpperCase()
                 )
               }
             />
 
             <input
               placeholder="Ponto de referência"
-              value={form.reference}
+              value={
+                form.reference
+              }
               onChange={(e) =>
                 updateField(
                   "reference",
@@ -1013,14 +1236,17 @@ function Checkout({ cart }) {
 
             <label
               style={{
-                display: "block",
-                padding: "18px",
+                display:
+                  "block",
+                padding:
+                  "18px",
                 border:
                   "1px solid #ddd",
                 marginBottom:
                   "12px",
               }}
             >
+
               <input
                 type="radio"
                 name="delivery"
@@ -1045,16 +1271,20 @@ function Checkout({ cart }) {
               </strong>
 
               <p>
-                Entregas de segunda a sábado.
-                Rotas organizadas até às 15h.
+                Entregas de segunda
+                a sábado. Rotas
+                organizadas até às
+                15h.
               </p>
 
             </label>
 
             <label
               style={{
-                display: "block",
-                padding: "18px",
+                display:
+                  "block",
+                padding:
+                  "18px",
                 border:
                   "1px solid #ddd",
                 marginBottom:
@@ -1081,20 +1311,24 @@ function Checkout({ cart }) {
               {" "}
 
               <strong>
-                Solicitar meu próprio motoboy
+                Solicitar meu próprio
+                motoboy
               </strong>
 
               <p>
-                A cliente chama e paga
-                o próprio entregador.
+                A cliente chama e
+                paga o próprio
+                entregador.
               </p>
 
             </label>
 
             <label
               style={{
-                display: "block",
-                padding: "18px",
+                display:
+                  "block",
+                padding:
+                  "18px",
                 border:
                   "1px solid #ddd",
                 marginBottom:
@@ -1121,7 +1355,8 @@ function Checkout({ cart }) {
               {" "}
 
               <strong>
-                Envio para todo o Brasil
+                Envio para todo o
+                Brasil
               </strong>
 
               <p>
@@ -1135,9 +1370,11 @@ function Checkout({ cart }) {
               className="btn full"
               disabled={loading}
             >
+
               {loading
                 ? "Criando pedido..."
                 : "Continuar"}
+
             </button>
 
           </form>
@@ -1151,54 +1388,34 @@ function Checkout({ cart }) {
             </h2>
 
             {order.deliveryMethod ===
-            "hey_beauty" && (
-              <>
-                <p>
-                  Entrega:
-                </p>
-
-                <strong>
-                  Motoboy Hey Beauty —
-                  R$ 15,00
-                </strong>
-              </>
+              "hey_beauty" && (
+              <p>
+                Motoboy Hey Beauty —
+                R$ 15,00
+              </p>
             )}
 
             {order.deliveryMethod ===
-            "customer_motoboy" && (
-              <>
-                <p>
-                  Entrega:
-                </p>
-
-                <strong>
-                  Motoboy por conta da cliente
-                </strong>
-              </>
+              "customer_motoboy" && (
+              <p>
+                Motoboy por conta da cliente.
+              </p>
             )}
 
             {order.deliveryMethod ===
-            "national" && (
-              <>
-                <p>
-                  Envio nacional
-                </p>
-
-                <strong>
-                  Frete a combinar
-                </strong>
-
-                <p>
-                  A Hey Beauty informará
-                  o valor do frete antes
-                  do envio.
-                </p>
-              </>
+              "national" && (
+              <p>
+                Frete nacional a combinar.
+              </p>
             )}
 
             <button
               className="btn full"
-              onClick={goToPayment}
+              onClick={() =>
+                navigate(
+                  "/pagamento"
+                )
+              }
             >
               Continuar para pagamento
             </button>
@@ -1223,6 +1440,7 @@ function Checkout({ cart }) {
 
         {cart.map(
           (item, index) => (
+
             <p key={index}>
 
               <span>
@@ -1238,22 +1456,28 @@ function Checkout({ cart }) {
               </span>
 
             </p>
+
           )
         )}
 
         <hr />
 
         <p>
+
           <span>
             Subtotal
           </span>
 
           <span>
-            {money(subtotal)}
+            {money(
+              subtotal
+            )}
           </span>
+
         </p>
 
         <p>
+
           <span>
             Entrega
           </span>
@@ -1270,22 +1494,27 @@ function Checkout({ cart }) {
               ? "A combinar"
               : "Selecione"}
           </span>
+
         </p>
 
-        <hr />
-
         {!national && (
-          <b>
+          <>
+            <hr />
 
-            <span>
-              Total
-            </span>
+            <b>
 
-            <span>
-              {money(total)}
-            </span>
+              <span>
+                Total
+              </span>
 
-          </b>
+              <span>
+                {money(
+                  total
+                )}
+              </span>
+
+            </b>
+          </>
         )}
 
       </aside>
@@ -1302,20 +1531,18 @@ function Payment({
   cart,
   setCart,
 }) {
-  const navigate =
-    useNavigate();
-
-  const [order] = useState(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem(
-          "paymentOrder"
-        ) || "null"
-      );
-    } catch {
-      return null;
-    }
-  });
+  const [order] =
+    useState(() => {
+      try {
+        return JSON.parse(
+          localStorage.getItem(
+            "paymentOrder"
+          ) || "null"
+        );
+      } catch {
+        return null;
+      }
+    });
 
   const [
     paymentMethod,
@@ -1327,8 +1554,34 @@ function Payment({
     setInstallments,
   ] = useState(1);
 
-  const [message, setMessage] =
-    useState("");
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    message,
+    setMessage,
+  ] = useState("");
+
+  const [
+    cardForm,
+    setCardForm,
+  ] = useState({
+    holder: "",
+    taxId: "",
+    number: "",
+    expMonth: "",
+    expYear: "",
+    securityCode: "",
+  });
+
+  useEffect(() => {
+    loadPagBankSdk()
+      .catch(
+        console.error
+      );
+  }, []);
 
   if (!order) {
     return (
@@ -1342,38 +1595,208 @@ function Payment({
           className="btn"
           to="/"
         >
-          Voltar para a loja
+          Voltar
         </Link>
 
       </main>
     );
   }
 
-  const displayTotal =
-    order.total;
-
-  const finalizeDemo = () => {
-
-    if (!paymentMethod) {
-      setMessage(
-        "Escolha uma forma de pagamento."
-      );
-
-      return;
-    }
-
-    /*
-      Ainda não cobra de verdade.
-      Na próxima etapa vamos trocar
-      isso pela integração Mercado Pago.
-    */
-
-    setMessage(
-      paymentMethod === "pix"
-        ? "Pix selecionado. Agora falta conectar o Mercado Pago para gerar o QR Code."
-        : `Cartão selecionado em ${installments}x. Agora falta conectar o Mercado Pago.`
+  const updateCard = (
+    field,
+    value
+  ) => {
+    setCardForm(
+      (current) => ({
+        ...current,
+        [field]: value,
+      })
     );
   };
+
+  const payPix =
+    async () => {
+      try {
+        setLoading(true);
+
+        setMessage(
+          "Gerando Pix..."
+        );
+
+        const result =
+          await api(
+            "/api/pagbank/pix",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  orderId:
+                    order.orderId,
+                }),
+            }
+          );
+
+        localStorage.setItem(
+          "lastPayment",
+          JSON.stringify(
+            result
+          )
+        );
+
+        setMessage(
+          "Pix gerado com sucesso."
+        );
+
+      } catch (error) {
+        setMessage(
+          error.message
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const payCard =
+    async () => {
+      try {
+        setLoading(true);
+
+        setMessage(
+          "Processando cartão..."
+        );
+
+        if (
+          !PAGBANK_PUBLIC_KEY
+        ) {
+          throw new Error(
+            "Chave pública do PagBank não configurada."
+          );
+        }
+
+        if (
+          !window.PagSeguro
+        ) {
+          await loadPagBankSdk();
+        }
+
+        const encrypted =
+          window.PagSeguro.encryptCard({
+            publicKey:
+              PAGBANK_PUBLIC_KEY,
+
+            holder:
+              cardForm.holder,
+
+            number:
+              onlyNumbers(
+                cardForm.number
+              ),
+
+            expMonth:
+              onlyNumbers(
+                cardForm.expMonth
+              ),
+
+            expYear:
+              onlyNumbers(
+                cardForm.expYear
+              ),
+
+            securityCode:
+              onlyNumbers(
+                cardForm.securityCode
+              ),
+          });
+
+        if (
+          encrypted.hasErrors
+        ) {
+          const errorText =
+            encrypted.errors
+              ?.map(
+                (error) =>
+                  error.message ||
+                  error.code
+              )
+              .join(", ");
+
+          throw new Error(
+            errorText ||
+            "Dados do cartão inválidos."
+          );
+        }
+
+        const result =
+          await api(
+            "/api/pagbank/card",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  orderId:
+                    order.orderId,
+
+                  installments,
+
+                  encryptedCard:
+                    encrypted.encryptedCard,
+
+                  holder: {
+                    name:
+                      cardForm.holder,
+
+                    taxId:
+                      onlyNumbers(
+                        cardForm.taxId
+                      ),
+                  },
+                }),
+            }
+          );
+
+        localStorage.setItem(
+          "lastPayment",
+          JSON.stringify(
+            result
+          )
+        );
+
+        setMessage(
+          result.message ||
+          "Pagamento processado."
+        );
+
+        if (
+          result.status ===
+          "PAID"
+        ) {
+          setCart([]);
+
+          localStorage.removeItem(
+            "paymentOrder"
+          );
+        }
+
+      } catch (error) {
+        setMessage(
+          error.message
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <main className="section checkout">
@@ -1396,14 +1819,14 @@ function Payment({
 
           <label
             style={{
-              display: "block",
-              padding: "18px",
+              display:
+                "block",
+              padding:
+                "18px",
               border:
                 "1px solid #ddd",
               marginBottom:
                 "12px",
-              cursor:
-                "pointer",
             }}
           >
 
@@ -1436,14 +1859,14 @@ function Payment({
 
           <label
             style={{
-              display: "block",
-              padding: "18px",
+              display:
+                "block",
+              padding:
+                "18px",
               border:
                 "1px solid #ddd",
               marginBottom:
-                "12px",
-              cursor:
-                "pointer",
+                "20px",
             }}
           >
 
@@ -1469,22 +1892,139 @@ function Payment({
             </strong>
 
             <p>
-              Parcelamento em até 12x.
+              Parcelamento em até
+              12x.
             </p>
 
           </label>
 
           {paymentMethod ===
             "credit" && (
-            <div
-              style={{
-                marginTop:
-                  "20px",
-              }}
-            >
+            <div>
 
-              <label>
-                Parcelas
+              <h3>
+                Dados do cartão
+              </h3>
+
+              <input
+                required
+                placeholder="Nome impresso no cartão"
+                value={
+                  cardForm.holder
+                }
+                onChange={(e) =>
+                  updateCard(
+                    "holder",
+                    e.target.value
+                  )
+                }
+              />
+
+              <input
+                required
+                placeholder="CPF do titular"
+                inputMode="numeric"
+                value={
+                  cardForm.taxId
+                }
+                onChange={(e) =>
+                  updateCard(
+                    "taxId",
+                    e.target.value
+                  )
+                }
+              />
+
+              <input
+                required
+                placeholder="Número do cartão"
+                inputMode="numeric"
+                autoComplete="cc-number"
+                maxLength="23"
+                value={
+                  cardForm.number
+                }
+                onChange={(e) =>
+                  updateCard(
+                    "number",
+                    e.target.value
+                  )
+                }
+              />
+
+              <div
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "1fr 1fr 1fr",
+                  gap: "10px",
+                }}
+              >
+
+                <input
+                  required
+                  placeholder="Mês"
+                  inputMode="numeric"
+                  maxLength="2"
+                  autoComplete="cc-exp-month"
+                  value={
+                    cardForm.expMonth
+                  }
+                  onChange={(e) =>
+                    updateCard(
+                      "expMonth",
+                      e.target.value
+                    )
+                  }
+                />
+
+                <input
+                  required
+                  placeholder="Ano"
+                  inputMode="numeric"
+                  maxLength="4"
+                  autoComplete="cc-exp-year"
+                  value={
+                    cardForm.expYear
+                  }
+                  onChange={(e) =>
+                    updateCard(
+                      "expYear",
+                      e.target.value
+                    )
+                  }
+                />
+
+                <input
+                  required
+                  type="password"
+                  placeholder="CVV"
+                  inputMode="numeric"
+                  maxLength="4"
+                  autoComplete="cc-csc"
+                  value={
+                    cardForm.securityCode
+                  }
+                  onChange={(e) =>
+                    updateCard(
+                      "securityCode",
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              <label
+                style={{
+                  display:
+                    "block",
+                  marginTop:
+                    "18px",
+                }}
+              >
+                Parcelamento
               </label>
 
               <select
@@ -1517,9 +2057,7 @@ function Payment({
                         number
                       }
                     >
-
                       {number}x
-
                     </option>
 
                   )
@@ -1528,30 +2066,39 @@ function Payment({
               </select>
 
               <p>
-                Juros e valor final das
-                parcelas serão calculados
-                pelo meio de pagamento.
+                O valor final e os
+                juros das parcelas
+                serão confirmados
+                pelo PagBank.
               </p>
+
+              <button
+                className="btn full"
+                disabled={loading}
+                onClick={payCard}
+              >
+                {loading
+                  ? "Processando..."
+                  : `Pagar ${money(
+                      order.total
+                    )}`}
+              </button>
 
             </div>
           )}
 
-          <button
-            className="btn full"
-            onClick={
-              finalizeDemo
-            }
-          >
-
-            {paymentMethod ===
-            "pix"
-              ? "Gerar Pix"
-              : paymentMethod ===
-                "credit"
-              ? "Pagar com cartão"
-              : "Escolher pagamento"}
-
-          </button>
+          {paymentMethod ===
+            "pix" && (
+            <button
+              className="btn full"
+              disabled={loading}
+              onClick={payPix}
+            >
+              {loading
+                ? "Gerando Pix..."
+                : "Gerar Pix"}
+            </button>
+          )}
 
         </div>
 
@@ -1571,6 +2118,7 @@ function Payment({
 
         {cart.map(
           (item, index) => (
+
             <p key={index}>
 
               <span>
@@ -1586,6 +2134,7 @@ function Payment({
               </span>
 
             </p>
+
           )
         )}
 
@@ -1612,7 +2161,6 @@ function Payment({
           </span>
 
           <span>
-
             {order.deliveryMethod ===
             "hey_beauty"
               ? "R$ 15,00"
@@ -1620,7 +2168,6 @@ function Payment({
                 "customer_motoboy"
               ? "R$ 0,00"
               : "A combinar"}
-
           </span>
 
         </p>
@@ -1638,20 +2185,12 @@ function Payment({
 
               <span>
                 {money(
-                  displayTotal
+                  order.total
                 )}
               </span>
 
             </b>
           </>
-        )}
-
-        {order.deliveryMethod ===
-          "national" && (
-          <p className="notice">
-            O valor do frete nacional
-            será informado antes do envio.
-          </p>
         )}
 
       </aside>
@@ -1833,7 +2372,9 @@ function Admin() {
       const file =
         event.target.files?.[0];
 
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
       const formData =
         new FormData();
@@ -1849,10 +2390,12 @@ function Admin() {
           await api(
             "/api/upload",
             {
-              method: "POST",
+              method:
+                "POST",
               headers:
                 headers(),
-              body: formData,
+              body:
+                formData,
             }
           );
 
@@ -1941,37 +2484,37 @@ function Admin() {
       }
     };
 
-  const editProduct = (
-    product
-  ) => {
+  const editProduct =
+    (product) => {
 
-    setEditingId(
-      product.id
-    );
+      setEditingId(
+        product.id
+      );
 
-    setForm({
-      ...product,
+      setForm({
+        ...product,
 
-      price: (
-        Number(
-          product.price || 0
-        ) / 100
-      )
-        .toFixed(2)
-        .replace(".", ","),
+        price: (
+          Number(
+            product.price || 0
+          ) / 100
+        )
+          .toFixed(2)
+          .replace(".", ","),
 
-      active:
-        Boolean(
-          product.active
-        ),
-    });
+        active:
+          Boolean(
+            product.active
+          ),
+      });
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+      window.scrollTo({
+        top: 0,
+        behavior:
+          "smooth",
+      });
 
-  };
+    };
 
   const deleteProduct =
     async (id) => {
@@ -2037,7 +2580,9 @@ function Admin() {
 
       <form
         className="panel"
-        onSubmit={saveProduct}
+        onSubmit={
+          saveProduct
+        }
       >
 
         <h2>
@@ -2049,7 +2594,9 @@ function Admin() {
         <input
           required
           placeholder="Nome"
-          value={form.name}
+          value={
+            form.name
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -2061,7 +2608,9 @@ function Admin() {
 
         <textarea
           placeholder="Descrição"
-          value={form.description}
+          value={
+            form.description
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -2075,7 +2624,9 @@ function Admin() {
           required
           type="text"
           placeholder="Preço: 80,00"
-          value={form.price}
+          value={
+            form.price
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -2089,7 +2640,9 @@ function Admin() {
           type="number"
           min="0"
           placeholder="Estoque"
-          value={form.stock}
+          value={
+            form.stock
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -2101,7 +2654,9 @@ function Admin() {
 
         <input
           placeholder="Tamanhos: P,M,G"
-          value={form.sizes}
+          value={
+            form.sizes
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -2113,7 +2668,9 @@ function Admin() {
 
         <input
           placeholder="Cores"
-          value={form.colors}
+          value={
+            form.colors
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -2142,8 +2699,10 @@ function Admin() {
             )}
             alt="Preview"
             style={{
-              width: "180px",
-              height: "220px",
+              width:
+                "180px",
+              height:
+                "220px",
               objectFit:
                 "cover",
               marginTop:
@@ -2214,12 +2773,17 @@ function Admin() {
               </b>
 
               <span>
+
                 {money(
                   product.price
                 )}
+
                 {" · "}
+
                 estoque{" "}
+
                 {product.stock}
+
               </span>
 
               <button
@@ -2265,11 +2829,15 @@ function Admin() {
             >
 
               <b>
-                Pedido #{order.id}
+                Pedido #
+                {order.id}
               </b>
 
               <span>
-                {order.customer_name}
+
+                {
+                  order.customer_name
+                }
 
                 {" · "}
 
@@ -2297,7 +2865,9 @@ function Admin() {
 ========================================================= */
 
 createRoot(
-  document.getElementById("root")
+  document.getElementById(
+    "root"
+  )
 ).render(
   <BrowserRouter>
     <App />
