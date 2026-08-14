@@ -211,7 +211,6 @@ const loadPagBankSdk = () =>
 /* =========================================================
    APP
 ========================================================= */
-
 function App() {
   const [cart, setCart] =
     useState(() => {
@@ -225,6 +224,9 @@ function App() {
         return [];
       }
     });
+
+  const [menuOpen, setMenuOpen] =
+    useState(false);
 
   useEffect(() => {
     localStorage.setItem(
@@ -302,14 +304,120 @@ function App() {
         🚚 SALVADOR R$15 • LAURO R$15 • ENVIAMOS PARA TODO O BRASIL
       </div>
 
-      <header className="site-header">
+      <header className="site-header">{menuOpen && (
+  <>
+    <div
+      className="menu-overlay"
+      onClick={() =>
+        setMenuOpen(false)
+      }
+    />
+
+    <aside className="side-menu">
+      <div className="side-menu-top">
+        <img
+          src="/logo-hey-beauty.png"
+          alt="HEY BEAUTY"
+        />
+
+        <button
+          type="button"
+          className="side-menu-close"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+          aria-label="Fechar menu"
+        >
+          ×
+        </button>
+      </div>
+
+      <nav className="side-menu-links">
+        <Link
+          to="/"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+        >
+          Início
+          <span>›</span>
+        </Link>
+
+        <a
+          href="/#produtos"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+        >
+          Produtos
+          <span>›</span>
+        </a>
+
+        <Link
+          to="/carrinho"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+        >
+          Carrinho
+          <span>›</span>
+        </Link>
+
+        <a
+          href="/#trocas"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+        >
+          Política de Trocas e Devoluções
+          <span>›</span>
+        </a>
+
+        <a
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+        >
+          WhatsApp
+          <span>↗</span>
+        </a>
+
+        <a
+          href={INSTAGRAM_URL}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() =>
+            setMenuOpen(false)
+          }
+        >
+          Instagram
+          <span>↗</span>
+        </a>
+      </nav>
+
+      <div className="side-menu-footer">
+        <strong>HEY BEAUTY</strong>
+        <small>
+          Moda feminina
+        </small>
+      </div>
+    </aside>
+  </>
+)}
         <div className="header-top-row">
-          <span
-            className="header-menu-icon"
-            aria-hidden="true"
-          >
-            ☰
-          </span>
+         <button
+  type="button"
+  className="header-menu-icon"
+  aria-label="Abrir menu"
+  onClick={() =>
+    setMenuOpen(true)
+  }
+>
+  ☰
+</button>
 
           <Link
             className="header-page-name"

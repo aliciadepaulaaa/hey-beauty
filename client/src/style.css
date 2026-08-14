@@ -1690,3 +1690,160 @@ body {
     font-size: 23px;
   }
 }
+/* ==========================================
+   MENU LATERAL HEY BEAUTY
+========================================== */
+
+.header-menu-icon {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 8px;
+  line-height: 1;
+}
+
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 24, 17, 0.58);
+  backdrop-filter: blur(2px);
+  z-index: 998;
+}
+
+.side-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  width: min(380px, 88vw);
+  height: 100vh;
+
+  padding: 26px;
+
+  background: #30362a;
+  color: #f6f1e7;
+
+  z-index: 999;
+
+  display: flex;
+  flex-direction: column;
+
+  box-shadow:
+    12px 0 40px
+    rgba(0, 0, 0, 0.22);
+
+  animation:
+    heyMenuOpen 0.25s ease;
+}
+
+@keyframes heyMenuOpen {
+  from {
+    transform:
+      translateX(-100%);
+  }
+
+  to {
+    transform:
+      translateX(0);
+  }
+}
+
+.side-menu-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding-bottom: 22px;
+
+  border-bottom:
+    1px solid
+    rgba(197, 164, 93, 0.35);
+}
+
+.side-menu-top img {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+}
+
+.side-menu-close {
+  width: 42px;
+  height: 42px;
+
+  border:
+    1px solid
+    rgba(197, 164, 93, 0.45);
+
+  border-radius: 50%;
+
+  background: transparent;
+  color: #f6f1e7;
+
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.side-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+
+  margin-top: 22px;
+}
+
+.side-menu-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+
+  padding: 18px 4px;
+
+  border-bottom:
+    1px solid
+    rgba(246, 241, 231, 0.12);
+
+  color: #f6f1e7;
+
+  font-size: 16px;
+  font-weight: 500;
+
+  transition:
+    0.2s ease;
+}
+
+.side-menu-links a:hover {
+  color: #c5a45d;
+
+  padding-left: 8px;
+}
+
+.side-menu-links a span {
+  color: #c5a45d;
+
+  font-size: 22px;
+}
+
+.side-menu-footer {
+  margin-top: auto;
+
+  padding-top: 25px;
+
+  border-top:
+    1px solid
+    rgba(197, 164, 93, 0.35);
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  color: #c5a45d;
+}
+
+.side-menu-footer small {
+  color:
+    rgba(246, 241, 231, 0.7);
+}
