@@ -26,6 +26,10 @@ const LOCAL_SHIPPING = 1500;
 const PAGBANK_PUBLIC_KEY =
   import.meta.env.VITE_PAGBANK_PUBLIC_KEY || "";
 
+// Coloque seus links reais quando quiser ativar estes botões.
+const WHATSAPP_URL = "#";
+const INSTAGRAM_URL = "#";
+
 /* =========================================================
    FUNÇÕES GERAIS
 ========================================================= */
@@ -236,12 +240,9 @@ function App() {
         const index =
           currentCart.findIndex(
             (item) =>
-              item.id ===
-                product.id &&
-              item.size ===
-                size &&
-              item.color ===
-                color
+              item.id === product.id &&
+              item.size === size &&
+              item.color === color
           );
 
         if (index >= 0) {
@@ -251,10 +252,8 @@ function App() {
 
           updated[index] = {
             ...updated[index],
-
             quantity:
-              updated[index]
-                .quantity + 1,
+              updated[index].quantity + 1,
           };
 
           return updated;
@@ -262,25 +261,13 @@ function App() {
 
         return [
           ...currentCart,
-
           {
-            id:
-              product.id,
-
-            name:
-              product.name,
-
-            price:
-              product.price,
-
-            image:
-              product.image ||
-              "",
-
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.image || "",
             size,
-
             color,
-
             quantity: 1,
           },
         ];
@@ -294,41 +281,86 @@ function App() {
     setCart(
       (currentCart) =>
         currentCart.filter(
-          (_, i) =>
-            i !== index
+          (_, i) => i !== index
         )
     );
   };
 
+  const cartCount =
+    cart.reduce(
+      (total, item) =>
+        total + item.quantity,
+      0
+    );
+
   return (
     <>
-      <header>
-        <Link
-          className="brand"
-          to="/"
-        >
-          HEY BEAUTY
-        </Link>
+      <div className="announcement-bar">
+        🚚 SALVADOR R$15 • LAURO R$15 • ENVIAMOS PARA TODO O BRASIL
+      </div>
 
-        <nav>
-          <Link to="/">
-            Produtos
+      <header className="site-header">
+        <div className="header-top-row">
+          <span
+            className="header-menu-icon"
+            aria-hidden="true"
+          >
+            ☰
+          </span>
+
+          <Link
+            className="header-page-name"
+            to="/"
+          >
+            INÍCIO
           </Link>
 
-          <Link to="/carrinho">
-            Carrinho (
-            {cart.reduce(
-              (
-                total,
-                item
-              ) =>
-                total +
-                item.quantity,
-              0
+          <a
+            className="header-search"
+            href="/#produtos"
+            aria-label="Ir para produtos"
+          >
+            ⌕
+          </a>
+        </div>
+
+        <nav className="quick-nav">
+          <Link to="/">
+            <span className="quick-nav-icon">⌂</span>
+            <span>INÍCIO</span>
+          </Link>
+
+          <a href="/#produtos">
+            <span className="quick-nav-icon">▦</span>
+            <span>PRODUTOS</span>
+          </a>
+
+          <Link
+            to="/carrinho"
+            className="quick-cart"
+          >
+            <span className="quick-nav-icon">🛒</span>
+
+            {cartCount > 0 && (
+              <span className="cart-badge">
+                {cartCount}
+              </span>
             )}
-            )
+
+            <span>CARRINHO</span>
           </Link>
         </nav>
+
+        <Link
+          className="header-logo"
+          to="/"
+          aria-label="HEY BEAUTY"
+        >
+          <img
+            src="/logo-hey-beauty.png"
+            alt="HEY BEAUTY Moda Feminina"
+          />
+        </Link>
       </header>
 
       <Routes>
@@ -428,40 +460,39 @@ function Home() {
   }, []);
 
   return (
-    <main>
-      <section className="hero">
+    <main className="home-page">
+      <section className="payment-highlight">
+        <div className="payment-highlight-icon">
+          ▰
+        </div>
+
         <div>
+          <strong>
+            ATÉ 12X NO CARTÃO
+          </strong>
           <span>
-            HEY BEAUTY
+            Parcele suas compras
           </span>
+        </div>
 
-          <h1>
-            Seu estilo começa
-            aqui.
-          </h1>
-
-          <p>
-            Escolha suas peças
-            favoritas e encontre
-            seu próximo look.
-          </p>
-
-          <a
-            href="#produtos"
-            className="btn"
-          >
-            Ver produtos
-          </a>
+        <div
+          className="highlight-dots"
+          aria-hidden="true"
+        >
+          <i className="active" />
+          <i />
         </div>
       </section>
 
       <section
         id="produtos"
-        className="section"
+        className="section home-products"
       >
-        <h2>
-          Nossos produtos
-        </h2>
+        <div className="section-title-line">
+          <span />
+          <h2>DESTAQUES</h2>
+          <span />
+        </div>
 
         {error && (
           <p className="notice">
@@ -474,37 +505,39 @@ function Home() {
             (product) => (
               <article
                 className="card"
-                key={
-                  product.id
-                }
+                key={product.id}
               >
-                {product.image ? (
-                  <img
-                    src={imageUrl(
-                      product.image
-                    )}
-                    alt={
-                      product.name
-                    }
-                  />
-                ) : (
-                  <div className="placeholder">
-                    FOTO DA PEÇA
-                  </div>
-                )}
+                <Link
+                  className="product-image-link"
+                  to={
+                    "/produto/" +
+                    product.id
+                  }
+                >
+                  <span className="product-badge">
+                    DESTAQUE
+                  </span>
+
+                  {product.image ? (
+                    <img
+                      src={imageUrl(
+                        product.image
+                      )}
+                      alt={
+                        product.name
+                      }
+                    />
+                  ) : (
+                    <div className="placeholder">
+                      FOTO DA PEÇA
+                    </div>
+                  )}
+                </Link>
 
                 <div className="cardbody">
                   <h3>
-                    {
-                      product.name
-                    }
+                    {product.name}
                   </h3>
-
-                  <p>
-                    {
-                      product.description
-                    }
-                  </p>
 
                   <strong>
                     {money(
@@ -515,10 +548,8 @@ function Home() {
                   {Number(
                     product.stock
                   ) <= 0 && (
-                    <p>
-                      <strong>
-                        Esgotado
-                      </strong>
+                    <p className="sold-out">
+                      Esgotado
                     </p>
                   )}
 
@@ -529,12 +560,83 @@ function Home() {
                       product.id
                     }
                   >
-                    Ver detalhes
+                    Ver produto
                   </Link>
                 </div>
               </article>
             )
           )}
+        </div>
+      </section>
+
+      <section className="home-links">
+        <div className="home-links-inner">
+          <img
+            className="home-links-logo"
+            src="/logo-hey-beauty.png"
+            alt="HEY BEAUTY"
+          />
+
+          <h2>HEY BEAUTY</h2>
+          <p>
+            Moda feminina para você se sentir ainda mais linda.
+          </p>
+
+          <a
+            className="link-pill"
+            href="/#produtos"
+          >
+            <span>
+              ✨ SITE OFICIAL - Compre aqui
+            </span>
+            <b>↗</b>
+          </a>
+
+          <a
+            className="link-pill"
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span>
+              WhatsApp - Atendimento
+            </span>
+            <b>↗</b>
+          </a>
+
+          <a
+            className="link-pill"
+            href="#trocas"
+          >
+            <span>
+              Política de Trocas e Devoluções
+            </span>
+            <b>↗</b>
+          </a>
+
+          <a
+            className="link-pill"
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span>
+              Instagram - HEY BEAUTY
+            </span>
+            <b>↗</b>
+          </a>
+
+          <div
+            id="trocas"
+            className="policy-preview"
+          >
+            <strong>
+              Trocas e devoluções
+            </strong>
+            <p>
+              Para solicitar troca ou devolução, entre em contato com o atendimento da HEY BEAUTY. As condições completas podem ser adicionadas aqui depois.
+            </p>
+          </div>
         </div>
       </section>
     </main>
