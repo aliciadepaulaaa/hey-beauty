@@ -2936,12 +2936,12 @@ app.post(
             cepDestino,
         },
 
-        package: {
-          height: 10,
-          width: 20,
-          length: 30,
-          weight: 0.5,
-        },
+    package: {
+  height: 5,
+  width: 25,
+  length: 30,
+  weight: 0.5,
+}
       };
 
       const response =
