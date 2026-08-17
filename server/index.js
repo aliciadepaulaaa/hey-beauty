@@ -3058,52 +3058,44 @@ app.post(
           })
         )
     : [];
-    options.sort(
-  (a, b) =>
-    a.price -
-    b.price
-);
+   options.sort((a, b) => {
+  const scoreA =
+    a.price +
+    (a.deliveryTime * 300);
 
-      if (
-        !options.length
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Nenhuma opção dos Correios disponível para este CEP.",
-          });
-      }
+  const scoreB =
+    b.price +
+    (b.deliveryTime * 300);
 
-      /*
-         Mais barato aparece primeiro.
-      */
+  return scoreA - scoreB;
+});
 
-      options.sort(
-        (a, b) =>
-          a.price -
-          b.price
-      );
+const bestOptions =
+  options.slice(0, 4);
 
-      return res.json({
-        options,
-      });
-    } catch (error) {
-      console.error(
-        "Erro frete Correios:",
-        error
-      );
+return res.json({
+  options: bestOptions,
+});
 
-      return res
-        .status(500)
-        .json({
-          error:
-            "Não foi possível calcular o frete.",
-        });
-    }
+} catch (error) {
+  console.error(
+    "Erro frete Correios:",
+    error
+  );
+
+  return res
+    .status(500)
+    .json({
+      error:
+        "Não foi possível calcular o frete.",
+    });
   }
+}
 );
 
+/* =========================================================
+   FRONTEND
+========================================================= */
 /* =========================================================
    FRONTEND
 ========================================================= */
