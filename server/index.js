@@ -3070,13 +3070,89 @@ app.post(
   return scoreA - scoreB;
 });
 
-const bestOptions =
-  options.slice(0, 4);
+const validOptions = [...options].filter(
+  (option) =>
+    Number.isFinite(option.price) &&
+    Number.isFinite(option.deliveryTime) &&
+    option.deliveryTime > 0
+);
+
+const cheapest =
+  [...validOptions].sort(
+    (a, b) => a.price - b.price
+  )[0] || null;
+
+const fastest =
+  [...validOptions].sort(
+    (a, b) =>
+      a.deliveryTime - b.deliveryTime ||
+      a.price - b.price
+  )[0] || null;
+
+const middleOptions =
+  validOptions
+    .filter(
+      (option) =>
+        option.serviceId !== cheapest?.serviceId &&
+        option.serviceId !== fastest?.serviceId
+    )
+    .sort((a, b) => {
+      const scoreA =
+        a.price +
+        a.deliveryTime * 250;
+
+      const scoreB =
+        b.price +
+        b.deliveryTime * 250;
+
+      return scoreA - scoreB;
+    })
+    .slice(0, 2);
+
+const bestOptions = [
+  cheapest
+    ? {
+        ...cheapest,
+        category: "Entrega econômica",
+      }
+    : null,
+
+  middleOptions[0]
+    ? {
+        ...middleOptions[0],
+        category: "Entrega Standard",
+      }
+    : null,
+
+  middleOptions[1]
+    ? {
+        ...middleOptions[1],
+        category: "Entrega Rápida",
+      }
+    : null,
+
+  fastest
+    ? {
+        ...fastest,
+        category: "Entrega Express",
+      }
+    : null,
+].filter(Boolean);
+
+const uniqueBestOptions =
+  bestOptions.filter(
+    (option, index, array) =>
+      index ===
+      array.findIndex(
+        (item) =>
+          item.serviceId ===
+          option.serviceId
+      )
+  );
 
 return res.json({
-  options: bestOptions,
+  options: uniqueBestOptions,
 });
-
 } catch (error) {
   console.error(
     "Erro frete Correios:",
