@@ -2238,73 +2238,62 @@ const shipping =
                         frete:
                       </strong>
 
-                      {shippingOptions.map(
-                        (
-                          option
-                        ) => (
-                          <label
-                            key={
-                              option.serviceId
-                            }
-                            style={{
-                              display:
-                                "block",
+                      {shippingOptions.map((option) => (
+  <label
+    key={option.serviceId}
+    style={{
+      display: "block",
+      padding: "12px",
+      marginTop: "10px",
+      border: "1px solid #ddd",
+      cursor: "pointer",
+    }}
+  >
+    <input
+      type="radio"
+      name="shippingOption"
+      value={option.serviceId}
+      checked={
+        selectedShipping?.serviceId ===
+        option.serviceId
+      }
+      onChange={() =>
+        setSelectedShipping(option)
+      }
+    />
 
-                              padding:
-                                "12px",
+    <div
+      style={{
+        marginTop: "8px",
+      }}
+    >
+      <strong>
+        {option.category || "Entrega"}
+      </strong>
 
-                              marginTop:
-                                "10px",
+      <br />
 
-                              border:
-                                "1px solid #ddd",
+      <span>
+        {option.company
+          ? `${option.company} • `
+          : ""}
+        {option.service}
+      </span>
 
-                              cursor:
-                                "pointer",
-                            }}
-                          >
-                            <input
-                              type="radio"
-                              name="shippingOption"
-                              checked={
-                                selectedShipping
-                                  ?.serviceId ===
-                                option.serviceId
-                              }
-                              onChange={() =>
-                                setSelectedShipping(
-                                  option
-                                )
-                              }
-                            />
+      {" — "}
 
-                            {" "}
+      {money(option.price)}
 
-                            <strong>
-                              {
-                                option.service
-                              }
-                            </strong>
+      <br />
 
-                            {" — "}
-
-                            {money(
-                              option.price
-                            )}
-
-                            <br />
-
-                            <small>
-                              Prazo
-                              aproximado:{" "}
-                              {
-                                option.deliveryTime
-                              }{" "}
-                              dias úteis
-                            </small>
-                          </label>
-                        )
-                      )}
+      <small>
+        Prazo aproximado:{" "}
+        {option.deliveryTime}{" "}
+        dias úteis
+      </small>
+    </div>
+  </label>
+))}
                     </div>
                   )}
                 </>
@@ -2313,189 +2302,82 @@ const shipping =
 
             <button
               className="btn full"
-              disabled={
-                loading
-              }
+              disabled={loading}
             >
               {loading
-                ? "Criando pedido..."
+                ? "Processando..."
                 : "Continuar"}
             </button>
+
+            {message && (
+              <p className="notice">
+                {message}
+              </p>
+            )}
           </form>
         ) : (
           <div className="panel">
             <h2>
-              Pedido #
-              {
-                order.orderId
-              }
+              Pedido #{order.orderId}
             </h2>
 
-            {order.deliveryMethod ===
-              "salvador" && (
-              <p>
-                ENTREGA FIXA -
-                SALVADOR — R$
-                15,00
-              </p>
-            )}
+            <p>
+              Pedido criado com sucesso.
+            </p>
 
-            {order.deliveryMethod ===
-              "lauro" && (
-              <p>
-                ENTREGA FIXA -
-                LAURO DE FREITAS
-                — R$ 15,00
-              </p>
-            )}
-
-            {order.deliveryMethod ===
-  "uber_99" && (
-  <p>
-    Uber Flash / 99 Entrega
-    — frete pago separadamente
-    no momento da solicitação.
-  </p>
-)}
-
-            {order.deliveryMethod ===
-              "nuvem_envio" &&
-              order.shippingService && (
-                <p>
-                  {
-                    order.shippingService
-                      .service
-                  }{" "}
-                  —{" "}
-                  {money(
-                    order.shippingService
-                      .price
-                  )}
-                </p>
-              )}
-
-            {order.total !=
-            null ? (
-              <button
-                className="btn full"
-                onClick={() =>
-                  navigate(
-                    "/pagamento"
-                  )
-                }
-              >
-                Continuar para
-                pagamento
-              </button>
-            ) : (
-              <p className="notice">
-                O valor da
-                entrega precisa
-                ser definido
-                antes do
-                pagamento.
-              </p>
-            )}
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                navigate("/pagamento")
+              }
+            >
+              Ir para pagamento
+            </button>
           </div>
-        )}
-
-        {message && (
-          <p className="notice">
-            {message}
-          </p>
         )}
       </div>
 
-      <aside>
-        <h3>
-          Resumo
-        </h3>
+      <aside className="summary">
+        <h2>Resumo</h2>
 
-        {cart.map(
-          (
-            item,
-            index
-          ) => (
-            <p
-              key={
-                index
-              }
-            >
-              <span>
-                {
-                  item.quantity
-                }
-                x{" "}
-                {
-                  item.name
-                }
-              </span>
-
-              <span>
-                {money(
-                  item.price *
-                    item.quantity
-                )}
-              </span>
-            </p>
-          )
-        )}
+        {cart.map((item, index) => (
+          <div key={index}>
+            {item.quantity}x{" "}
+            {item.name}
+          </div>
+        ))}
 
         <hr />
 
         <p>
-          <span>
-            Produtos
-          </span>
-
-          <span>
-            {money(
-              subtotal
-            )}
-          </span>
+          Produtos{" "}
+          <strong>
+            {money(subtotal)}
+          </strong>
         </p>
 
         <p>
-          <span>
-            Entrega
-          </span>
-
-          <span>
-  {form.deliveryMethod ===
-  "uber_99"
-    ? "Pago separadamente"
-    : shipping !== null
-    ? money(
-        shipping
-      )
-    : form.deliveryMethod
-    ? "A definir"
-    : "Selecione"}
-</span>
+          Entrega{" "}
+          <strong>
+            {shipping === null
+              ? "A definir"
+              : money(shipping)}
+          </strong>
         </p>
 
-        {shipping !== null && (
-          <>
-            <hr />
+        <hr />
 
-            <b>
-              <span>
-                Total
-              </span>
-
-              <span>
-                {money(
-                  total
-                )}
-              </span>
-            </b>
-          </>
-        )}
+        <p>
+          <strong>
+            Total{" "}
+            {money(total)}
+          </strong>
+        </p>
       </aside>
     </main>
   );
 }
-
 /* =========================================================
    PAGAMENTO
 ========================================================= */

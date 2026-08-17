@@ -3058,104 +3058,126 @@ app.post(
           })
         )
     : [];
-   options.sort((a, b) => {
-  const scoreA =
-    a.price +
-    (a.deliveryTime * 300);
+  
 
-  const scoreB =
-    b.price +
-    (b.deliveryTime * 300);
-
-  return scoreA - scoreB;
-});
-
-const validOptions = [...options].filter(
-  (option) =>
-    Number.isFinite(option.price) &&
-    Number.isFinite(option.deliveryTime) &&
-    option.deliveryTime > 0
-);
-
-const cheapest =
-  [...validOptions].sort(
-    (a, b) => a.price - b.price
-  )[0] || null;
-
-const fastest =
-  [...validOptions].sort(
+const validOptions = [...options]
+  .filter(
+    (option) =>
+      Number.isFinite(option.price) &&
+      Number.isFinite(option.deliveryTime) &&
+      option.deliveryTime > 0
+  )
+  .sort(
     (a, b) =>
-      a.deliveryTime - b.deliveryTime ||
+      b.deliveryTime - a.deliveryTime ||
       a.price - b.price
-  )[0] || null;
+  );
 
-const middleOptions =
-  validOptions
-    .filter(
-      (option) =>
-        option.serviceId !== cheapest?.serviceId &&
-        option.serviceId !== fastest?.serviceId
+/*
+  Seleciona no máximo 4 opções,
+  distribuídas entre a mais lenta
+  e a mais rápida.
+*/
+
+const positions =
+  validOptions.length <= 4
+    ? validOptions.map((_, index) => index)
+    : [
+        0,
+        Math.round(
+          (validOptions.length - 1) / 3
+        ),
+        Math.round(
+          ((validOptions.length - 1) * 2) / 3
+        ),
+        validOptions.length - 1,
+      ];
+
+const selectedOptions =
+  positions
+    .map(
+      (position) =>
+        validOptions[position]
     )
-    .sort((a, b) => {
-      const scoreA =
-        a.price +
-        a.deliveryTime * 250;
+    .filter(Boolean)
+    .filter(
+      (option, index, array) =>
+        index ===
+        array.findIndex(
+          (item) =>
+            item.serviceId ===
+            option.serviceId
+        )
+    )
+    .sort(
+      (a, b) =>
+        b.deliveryTime -
+          a.deliveryTime ||
+        a.price - b.price
+    );
 
-      const scoreB =
-        b.price +
-        b.deliveryTime * 250;
+/*
+  REGRA COMERCIAL:
 
-      return scoreA - scoreB;
-    })
-    .slice(0, 2);
+  mais lento = mais barato
+  mais rápido = mais caro
 
-const bestOptions = [
-  cheapest
-    ? {
-        ...cheapest,
-        category: "Entrega econômica",
+  Nunca reduzimos o preço real
+  retornado pela transportadora.
+*/
+
+const categories = [
+  "Entrega Econômica",
+  "Entrega Standard",
+  "Entrega Rápida",
+  "Entrega Express",
+];
+
+let previousPrice = 0;
+
+const bestOptions =
+  selectedOptions.map(
+    (option, index) => {
+      const realPrice =
+        Number(option.price);
+
+      let finalPrice =
+        realPrice;
+
+      if (
+        index > 0 &&
+        finalPrice <= previousPrice
+      ) {
+        finalPrice =
+          previousPrice + 200;
       }
-    : null,
 
-  middleOptions[0]
-    ? {
-        ...middleOptions[0],
-        category: "Entrega Standard",
-      }
-    : null,
+      previousPrice =
+        finalPrice;
 
-  middleOptions[1]
-    ? {
-        ...middleOptions[1],
-        category: "Entrega Rápida",
-      }
-    : null,
+      return {
+        ...option,
 
-  fastest
-    ? {
-        ...fastest,
-        category: "Entrega Express",
-      }
-    : null,
-].filter(Boolean);
+        originalPrice:
+          realPrice,
 
-const uniqueBestOptions =
-  bestOptions.filter(
-    (option, index, array) =>
-      index ===
-      array.findIndex(
-        (item) =>
-          item.serviceId ===
-          option.serviceId
-      )
+        price:
+          finalPrice,
+
+        category:
+          categories[index] ||
+          "Entrega",
+      };
+    }
   );
 
 return res.json({
-  options: uniqueBestOptions,
+  options: bestOptions,
 });
+
 } catch (error) {
   console.error(
-    "Erro frete Correios:",
+    "Erro frete:",
     error
   );
 
@@ -3165,13 +3187,10 @@ return res.json({
       error:
         "Não foi possível calcular o frete.",
     });
-  }
+}
 }
 );
 
-/* =========================================================
-   FRONTEND
-========================================================= */
 /* =========================================================
    FRONTEND
 ========================================================= */
@@ -3230,7 +3249,7 @@ app.listen(
     );
 
     console.log(
-      "ℹ️ Pedidos: JSON (migração será a próxima etapa)"
+      "✅ Pedidos: PostgreSQL"
     );
   }
 );
