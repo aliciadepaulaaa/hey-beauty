@@ -3012,56 +3012,57 @@ app.post(
         17,
       ];
 
-      const options =
-        Array.isArray(data)
-          ? data
-              .filter(
-                (service) =>
-                  correiosIds.includes(
-                    Number(
-                      service.id
-                    )
-                  )
-              )
-              .filter(
-                (service) =>
-                  !service.error &&
-                  service.price
-              )
-              .map(
-                (service) => ({
-                  serviceId:
-                    Number(
-                      service.id
-                    ),
+     const options =
+  Array.isArray(data)
+    ? data
+        .filter(
+          (service) =>
+            !service.error &&
+            (
+              service.custom_price ||
+              service.price
+            )
+        )
+        .map(
+          (service) => ({
+            serviceId:
+              Number(service.id),
 
-                  service:
-                    service.name,
+            service:
+              service.name,
 
-                  company:
-                    "Correios",
+            company:
+              service.company?.name ||
+              service.company ||
+              "Transportadora",
 
-                  price:
-                    Math.round(
-                      Number(
-                        service.custom_price ||
-                          service.price
-                      ) * 100
-                    ),
+            price:
+              Math.round(
+                Number(
+                  service.custom_price ||
+                    service.price
+                ) * 100
+              ),
 
-                  deliveryTime:
-                    Number(
-                      service.custom_delivery_time ||
-                        service.delivery_time
-                    ),
+            deliveryTime:
+              Number(
+                service.custom_delivery_time ||
+                  service.delivery_time ||
+                  0
+              ),
 
-                  deliveryRange:
-                    service.custom_delivery_range ||
-                    service.delivery_range ||
-                    null,
-                })
-              )
-          : [];
+            deliveryRange:
+              service.custom_delivery_range ||
+              service.delivery_range ||
+              null,
+          })
+        )
+    : [];
+    options.sort(
+  (a, b) =>
+    a.price -
+    b.price
+);
 
       if (
         !options.length
