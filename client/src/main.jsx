@@ -1431,6 +1431,7 @@ const shipping =
         setMessage(
           "Endereço preenchido automaticamente."
         );
+        await calcularSedex(cep);
       } catch {
         setMessage(
           "Não foi possível consultar o CEP."
@@ -1446,12 +1447,12 @@ const shipping =
      CALCULAR FRETE CORREIOS
   ======================================================= */
 
-  const calcularSedex =
-    async () => {
+ const calcularSedex =
+  async (cepInformado = "") => {
       const cep =
-        onlyNumbers(
-          form.cep
-        );
+  onlyNumbers(
+    cepInformado || form.cep
+  );
 
       if (
         cep.length !== 8
@@ -1510,21 +1511,17 @@ const shipping =
           options
         );
 
-        if (
-          options.length
-        ) {
-          setSelectedShipping(
-            options[0]
-          );
+       if (options.length) {
+  setSelectedShipping(null);
 
+  setMessage(
+    "Escolha a opção de entrega desejada."
+  );
+} else {
           setMessage(
-            "Escolha a opção de frete desejada."
-          );
-        } else {
-          setMessage(
-            "Nenhuma opção dos Correios disponível para esse CEP."
-          );
-        }
+           "Nenhuma opção de entrega disponível para esse CEP."
+  );
+}
       } catch (error) {
         setShippingOptions(
           []
@@ -1981,325 +1978,387 @@ const shipping =
               }
             />
 
-            <h3>
-              Forma de entrega
-            </h3>
-
-            <label
-              style={{
-                display:
-                  "block",
-
-                padding:
-                  "18px",
-
-                border:
-                  "1px solid #ddd",
-
-                marginBottom:
-                  "12px",
-              }}
-            >
-              <input
-                type="radio"
-                name="delivery"
-                value="salvador"
-                checked={
-                  form.deliveryMethod ===
-                  "salvador"
-                }
-                onChange={(e) => {
-                  updateField(
-                    "deliveryMethod",
-                    e.target.value
-                  );
-
-                  setShippingOptions(
-                    []
-                  );
-
-                  setSelectedShipping(
-                    null
-                  );
-                }}
-              />
-
-              {" "}
-
-              <strong>
-                ENTREGA FIXA -
-                SALVADOR — R$
-                15,00
-              </strong>
-
-              <p>
-                Entregas de
-                segunda a
-                sábado. Rotas
-                organizadas até
-                às 15h.
-              </p>
-            </label>
-
-            <label
-              style={{
-                display:
-                  "block",
-
-                padding:
-                  "18px",
-
-                border:
-                  "1px solid #ddd",
-
-                marginBottom:
-                  "12px",
-              }}
-            >
-              <input
-                type="radio"
-                name="delivery"
-                value="lauro"
-                checked={
-                  form.deliveryMethod ===
-                  "lauro"
-                }
-                onChange={(e) => {
-                  updateField(
-                    "deliveryMethod",
-                    e.target.value
-                  );
-
-                  setShippingOptions(
-                    []
-                  );
-
-                  setSelectedShipping(
-                    null
-                  );
-                }}
-              />
-
-              {" "}
-
-              <strong>
-                ENTREGA FIXA -
-                LAURO DE FREITAS
-                — R$ 15,00
-              </strong>
-
-              <p>
-                Entregas de
-                segunda a
-                sábado. Rotas
-                organizadas até
-                às 15h.
-              </p>
-            </label>
-
-            <label
-              style={{
-                display:
-                  "block",
-
-                padding:
-                  "18px",
-
-                border:
-                  "1px solid #ddd",
-
-                marginBottom:
-                  "12px",
-              }}
-            >
-              <input
-                type="radio"
-                name="delivery"
-                value="uber_99"
-                checked={
-                  form.deliveryMethod ===
-                  "uber_99"
-                }
-                onChange={(e) => {
-                  updateField(
-                    "deliveryMethod",
-                    e.target.value
-                  );
-
-                  setShippingOptions(
-                    []
-                  );
-
-                  setSelectedShipping(
-                    null
-                  );
-                }}
-              />
-
-              {" "}
-
-              <strong>
-                Uber Flash / 99
-                Entrega
-              </strong>
-
-              <p>
-                Valor do frete
-                definido pelo
-                aplicativo no
-                momento da
-                solicitação.
-              </p>
-            </label>
-
-            <div
-              style={{
-                display:
-                  "block",
-
-                padding:
-                  "18px",
-
-                border:
-                  "1px solid #ddd",
-
-                marginBottom:
-                  "20px",
-              }}
-            >
-              <label>
-                <input
-                  type="radio"
-                  name="delivery"
-                  value="nuvem_envio"
-                  checked={
-                    form.deliveryMethod ===
-                    "nuvem_envio"
-                  }
-                  onChange={(e) => {
-                    updateField(
-                      "deliveryMethod",
-                      e.target.value
-                    );
-
-                    setShippingOptions(
-                      []
-                    );
-
-                    setSelectedShipping(
-                      null
-                    );
-                  }}
-                />
-
-                {" "}
-
-                <strong>
-                  Correios
-                </strong>
-              </label>
-
-              <p>
-                PAC, SEDEX e
-                Mini Envios,
-                conforme
-                disponibilidade
-                para o CEP.
-              </p>
-
-              {form.deliveryMethod ===
-                "nuvem_envio" && (
-                <>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={
-                      calcularSedex
-                    }
-                    disabled={
-                      loadingSedex
-                    }
-                  >
-                    {loadingSedex
-                      ? "Calculando..."
-                      : "Calcular frete"}
-                  </button>
-
-                  {shippingOptions.length >
-                    0 && (
-                    <div
-                      style={{
-                        marginTop:
-                          "15px",
-                      }}
-                    >
-                      <strong>
-                        Escolha o
-                        frete:
-                      </strong>
-
-                      {shippingOptions.map((option) => (
-  <label
-    key={option.serviceId}
+     <div
+  style={{
+    marginTop: "34px",
+  }}
+>
+  {/* CABEÇALHO ENTREGA */}
+  <div
     style={{
-      display: "block",
-      padding: "12px",
-      marginTop: "10px",
-      border: "1px solid #ddd",
-      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "14px",
+      marginBottom: "18px",
     }}
   >
-    <input
-      type="radio"
-      name="shippingOption"
-      value={option.serviceId}
-      checked={
-        selectedShipping?.serviceId ===
-        option.serviceId
-      }
-      onChange={() =>
-        setSelectedShipping(option)
-      }
+    <div
+      style={{
+        height: "1px",
+        background: "#ddd",
+        flex: 1,
+      }}
     />
+
+    <h3
+      style={{
+        margin: 0,
+        fontSize: "22px",
+        letterSpacing: "2px",
+      }}
+    >
+      ENTREGA
+    </h3>
 
     <div
       style={{
-        marginTop: "8px",
+        height: "1px",
+        background: "#ddd",
+        flex: 1,
+      }}
+    />
+
+    {onlyNumbers(form.cep).length === 8 && (
+      <button
+        type="button"
+        onClick={() => {
+          const input =
+            document.getElementById("checkout-cep");
+
+          input?.focus();
+          input?.select();
+        }}
+        style={{
+          background: "#241d1f",
+          color: "#fff",
+          border: 0,
+          padding: "12px 18px",
+          fontWeight: "700",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        ALTERAR: {onlyNumbers(form.cep)}
+      </button>
+    )}
+  </div>
+
+  {/* ENVIO EM DOMICÍLIO */}
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+      marginBottom: "16px",
+      fontWeight: "700",
+    }}
+  >
+    <span style={{ fontSize: "20px" }}>
+      🚚
+    </span>
+
+    <span>Envio em domicílio</span>
+  </div>
+
+  {/* LISTA DE ENTREGAS */}
+  <div
+    style={{
+      border: "1px solid #bbb",
+      borderBottom: 0,
+    }}
+  >
+    {/* CARREGANDO FRETES */}
+    {loadingSedex && (
+      <div
+        style={{
+          padding: "22px",
+          borderBottom: "1px solid #bbb",
+        }}
+      >
+        Calculando opções de entrega...
+      </div>
+    )}
+
+    {/* FRETES CALCULADOS PELO CEP */}
+    {!loadingSedex &&
+      onlyNumbers(form.cep).length === 8 &&
+      shippingOptions.map((option) => (
+        <label
+          key={option.serviceId}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "32px 1fr auto",
+            gap: "14px",
+            alignItems: "center",
+            padding: "18px 14px",
+            borderBottom: "1px solid #bbb",
+            cursor: "pointer",
+            background:
+              form.deliveryMethod === "nuvem_envio" &&
+              selectedShipping?.serviceId ===
+                option.serviceId
+                ? "#faf8f4"
+                : "#fff",
+          }}
+        >
+          <input
+            type="radio"
+            name="delivery"
+            checked={
+              form.deliveryMethod === "nuvem_envio" &&
+              selectedShipping?.serviceId ===
+                option.serviceId
+            }
+            onChange={() => {
+              updateField(
+                "deliveryMethod",
+                "nuvem_envio"
+              );
+
+              setSelectedShipping(option);
+            }}
+            style={{
+              width: "20px",
+              height: "20px",
+            }}
+          />
+
+          <div>
+            <strong
+              style={{
+                display: "block",
+                marginBottom: "5px",
+              }}
+            >
+              {option.category || "Entrega"}
+
+              {option.company
+                ? ` — ${option.company}`
+                : ""}
+
+              {option.service
+                ? ` ${option.service}`
+                : ""}
+            </strong>
+
+            <small
+              style={{
+                color: "#666",
+              }}
+            >
+              Chega em aproximadamente{" "}
+              {option.deliveryTime} dias úteis
+            </small>
+          </div>
+
+          <strong
+            style={{
+              fontSize: "16px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {money(option.price)}
+          </strong>
+        </label>
+      ))}
+
+    {/* ENTREGA FIXA SALVADOR */}
+    <label
+      style={{
+        display: "grid",
+        gridTemplateColumns: "32px 1fr auto",
+        gap: "14px",
+        alignItems: "center",
+        padding: "18px 14px",
+        borderBottom: "1px solid #bbb",
+        cursor: "pointer",
       }}
     >
-      <strong>
-        {option.category || "Entrega"}
+      <input
+        type="radio"
+        name="delivery"
+        value="salvador"
+        checked={
+          form.deliveryMethod === "salvador"
+        }
+        onChange={() => {
+          updateField(
+            "deliveryMethod",
+            "salvador"
+          );
+
+          setSelectedShipping(null);
+        }}
+        style={{
+          width: "20px",
+          height: "20px",
+        }}
+      />
+
+      <div>
+        <strong
+          style={{
+            display: "block",
+            marginBottom: "5px",
+          }}
+        >
+          ENTREGA FIXA — SALVADOR
+        </strong>
+
+        <small
+          style={{
+            color: "#666",
+          }}
+        >
+          Entregas de segunda a sábado
+        </small>
+      </div>
+
+      <strong
+        style={{
+          whiteSpace: "nowrap",
+        }}
+      >
+        R$ 15,00
       </strong>
+    </label>
 
-      <br />
+    {/* ENTREGA FIXA LAURO DE FREITAS */}
+    <label
+      style={{
+        display: "grid",
+        gridTemplateColumns: "32px 1fr auto",
+        gap: "14px",
+        alignItems: "center",
+        padding: "18px 14px",
+        borderBottom: "1px solid #bbb",
+        cursor: "pointer",
+      }}
+    >
+      <input
+        type="radio"
+        name="delivery"
+        value="lauro"
+        checked={
+          form.deliveryMethod === "lauro"
+        }
+        onChange={() => {
+          updateField(
+            "deliveryMethod",
+            "lauro"
+          );
 
-      <span>
-        {option.company
-          ? `${option.company} • `
-          : ""}
-        {option.service}
-      </span>
+          setSelectedShipping(null);
+        }}
+        style={{
+          width: "20px",
+          height: "20px",
+        }}
+      />
 
-      {" — "}
+      <div>
+        <strong
+          style={{
+            display: "block",
+            marginBottom: "5px",
+          }}
+        >
+          ENTREGA FIXA — LAURO DE FREITAS
+        </strong>
 
-      {money(option.price)}
+        <small
+          style={{
+            color: "#666",
+          }}
+        >
+          Entregas de segunda a sábado
+        </small>
+      </div>
 
-      <br />
+      <strong
+        style={{
+          whiteSpace: "nowrap",
+        }}
+      >
+        R$ 15,00
+      </strong>
+    </label>
 
-      <small>
-        Prazo aproximado:{" "}
-        {option.deliveryTime}{" "}
-        dias úteis
-      </small>
-    </div>
-  </label>
-))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+    {/* UBER FLASH / 99 */}
+    <label
+      style={{
+        display: "grid",
+        gridTemplateColumns: "32px 1fr auto",
+        gap: "14px",
+        alignItems: "center",
+        padding: "18px 14px",
+        borderBottom: "1px solid #bbb",
+        cursor: "pointer",
+      }}
+    >
+      <input
+        type="radio"
+        name="delivery"
+        value="uber_99"
+        checked={
+          form.deliveryMethod === "uber_99"
+        }
+        onChange={() => {
+          updateField(
+            "deliveryMethod",
+            "uber_99"
+          );
 
+          setSelectedShipping(null);
+        }}
+        style={{
+          width: "20px",
+          height: "20px",
+        }}
+      />
+
+      <div>
+        <strong
+          style={{
+            display: "block",
+            marginBottom: "5px",
+          }}
+        >
+          Uber Flash / 99 Entrega
+        </strong>
+
+        <small
+          style={{
+            color: "#666",
+          }}
+        >
+          Valor do frete definido pelo aplicativo
+          no momento da solicitação. Chega hoje.
+        </small>
+      </div>
+
+      <strong
+        style={{
+          whiteSpace: "nowrap",
+        }}
+      >
+        A definir
+      </strong>
+    </label>
+  </div>
+
+  {onlyNumbers(form.cep).length !== 8 && (
+    <p
+      style={{
+        marginTop: "12px",
+        color: "#666",
+      }}
+    >
+      Informe seu CEP para visualizar as opções
+      de entrega.
+    </p>
+  )}
+</div>
             <button
               className="btn full"
               disabled={loading}
