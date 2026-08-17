@@ -60,9 +60,60 @@ async function initDatabase() {
     );
   `);
 
-  console.log("✅ Tabela products pronta");
-}
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id SERIAL PRIMARY KEY,
 
+      customer_name TEXT NOT NULL,
+      cpf TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT DEFAULT '',
+
+      cep TEXT DEFAULT '',
+      street TEXT DEFAULT '',
+      number TEXT DEFAULT '',
+      complement TEXT DEFAULT '',
+      neighborhood TEXT DEFAULT '',
+      city TEXT DEFAULT '',
+      state TEXT DEFAULT '',
+      reference TEXT DEFAULT '',
+      address TEXT DEFAULT '',
+
+      delivery_method TEXT,
+      shipping_fee INTEGER,
+      shipping_status TEXT,
+      shipping_service TEXT,
+      shipping_service_id TEXT,
+      shipping_delivery_time INTEGER,
+
+      subtotal INTEGER NOT NULL DEFAULT 0,
+      total INTEGER,
+
+      items JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+      payment_status TEXT DEFAULT 'pending',
+      payment_method TEXT,
+
+      stock_decremented BOOLEAN NOT NULL DEFAULT FALSE,
+
+      pagbank_order_id TEXT,
+      pagbank_charge_id TEXT,
+
+      pagbank_qr_code TEXT,
+      pagbank_qr_code_image TEXT,
+
+      installments INTEGER,
+      payment_total INTEGER,
+      pix_expiration TEXT,
+
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  console.log("✅ Tabela products pronta");
+  console.log("✅ Tabela orders pronta");
+}
 const dbReady = initDatabase().catch((error) => {
   console.error(
     "❌ Erro ao criar tabelas:",
