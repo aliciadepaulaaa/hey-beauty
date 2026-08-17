@@ -1786,6 +1786,21 @@ const shipping =
       </main>
     );
   }
+  const sedexOption =
+    shippingOptions.find(
+      (option) =>
+        String(option.service || "")
+          .toLowerCase()
+          .includes("sedex")
+    ) || null;
+
+  const pacOption =
+    shippingOptions.find(
+      (option) =>
+        String(option.service || "")
+          .toLowerCase()
+          .includes("pac")
+    ) || null;
 
   return (
     <main className="section checkout">
@@ -1979,112 +1994,148 @@ const shipping =
             />
 
      <div
-  style={{
-    marginTop: "34px",
-  }}
->
-  {/* CABEÇALHO ENTREGA */}
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "14px",
-      marginBottom: "18px",
-    }}
-  >
-    <div
       style={{
-        height: "1px",
-        background: "#ddd",
-        flex: 1,
-      }}
-    />
-
-    <h3
-      style={{
-        margin: 0,
-        fontSize: "22px",
-        letterSpacing: "2px",
+        marginTop: "34px",
       }}
     >
-      ENTREGA
-    </h3>
-
-    <div
-      style={{
-        height: "1px",
-        background: "#ddd",
-        flex: 1,
-      }}
-    />
-
-    {onlyNumbers(form.cep).length === 8 && (
-      <button
-        type="button"
-        onClick={() => {
-          const input =
-            document.getElementById("checkout-cep");
-
-          input?.focus();
-          input?.select();
-        }}
-        style={{
-          background: "#241d1f",
-          color: "#fff",
-          border: 0,
-          padding: "12px 18px",
-          fontWeight: "700",
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-        }}
-      >
-        ALTERAR: {onlyNumbers(form.cep)}
-      </button>
-    )}
-  </div>
-
-  {/* ENVIO EM DOMICÍLIO */}
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "10px",
-      marginBottom: "16px",
-      fontWeight: "700",
-    }}
-  >
-    <span style={{ fontSize: "20px" }}>
-      🚚
-    </span>
-
-    <span>Envio em domicílio</span>
-  </div>
-
-  {/* LISTA DE ENTREGAS */}
-  <div
-    style={{
-      border: "1px solid #bbb",
-      borderBottom: 0,
-    }}
-  >
-    {/* CARREGANDO FRETES */}
-    {loadingSedex && (
       <div
         style={{
-          padding: "22px",
-          borderBottom: "1px solid #bbb",
+          display: "flex",
+          alignItems: "center",
+          gap: "14px",
+          marginBottom: "18px",
         }}
       >
-        Calculando opções de entrega...
-      </div>
-    )}
+        <div
+          style={{
+            height: "1px",
+            background: "#ddd",
+            flex: 1,
+          }}
+        />
 
-    {/* FRETES CALCULADOS PELO CEP */}
-    {!loadingSedex &&
-      onlyNumbers(form.cep).length === 8 &&
-      shippingOptions.map((option) => (
+        <h3
+          style={{
+            margin: 0,
+            fontSize: "22px",
+            letterSpacing: "2px",
+          }}
+        >
+          ENTREGA
+        </h3>
+
+        <div
+          style={{
+            height: "1px",
+            background: "#ddd",
+            flex: 1,
+          }}
+        />
+
+        {onlyNumbers(form.cep).length === 8 && (
+          <button
+            type="button"
+            onClick={() => {
+              const input =
+                document.getElementById("checkout-cep");
+
+              input?.focus();
+              input?.select();
+            }}
+            style={{
+              background: "#241d1f",
+              color: "#fff",
+              border: 0,
+              padding: "12px 18px",
+              fontWeight: "700",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ALTERAR: {onlyNumbers(form.cep)}
+          </button>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "16px",
+          fontWeight: "700",
+        }}
+      >
+        <span>🚚</span>
+        <span>Envio em domicílio</span>
+      </div>
+
+      <div
+        style={{
+          border: "1px solid #bbb",
+          borderBottom: 0,
+        }}
+      >
+        {loadingSedex && (
+          <div
+            style={{
+              padding: "20px",
+              borderBottom: "1px solid #bbb",
+            }}
+          >
+            Calculando opções de entrega...
+          </div>
+        )}
+
+        {!loadingSedex && sedexOption && (
+          <label
+            style={{
+              display: "grid",
+              gridTemplateColumns: "32px 1fr auto",
+              gap: "14px",
+              alignItems: "center",
+              padding: "18px 14px",
+              borderBottom: "1px solid #bbb",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="radio"
+              name="delivery"
+              checked={
+                form.deliveryMethod === "nuvem_envio" &&
+                selectedShipping?.serviceId === sedexOption.serviceId
+              }
+              onChange={() => {
+                updateField("deliveryMethod", "nuvem_envio");
+                setSelectedShipping(sedexOption);
+              }}
+              style={{
+                width: "20px",
+                height: "20px",
+              }}
+            />
+
+            <div>
+              <strong
+                style={{
+                  display: "block",
+                  marginBottom: "5px",
+                }}
+              >
+                Correios SEDEX
+              </strong>
+
+              <small style={{ color: "#666" }}>
+                Chega em aproximadamente {sedexOption.deliveryTime} dias úteis
+              </small>
+            </div>
+
+            <strong>{money(sedexOption.price)}</strong>
+          </label>
+        )}
+
         <label
-          key={option.serviceId}
           style={{
             display: "grid",
             gridTemplateColumns: "32px 1fr auto",
@@ -2093,29 +2144,15 @@ const shipping =
             padding: "18px 14px",
             borderBottom: "1px solid #bbb",
             cursor: "pointer",
-            background:
-              form.deliveryMethod === "nuvem_envio" &&
-              selectedShipping?.serviceId ===
-                option.serviceId
-                ? "#faf8f4"
-                : "#fff",
           }}
         >
           <input
             type="radio"
             name="delivery"
-            checked={
-              form.deliveryMethod === "nuvem_envio" &&
-              selectedShipping?.serviceId ===
-                option.serviceId
-            }
+            checked={form.deliveryMethod === "salvador"}
             onChange={() => {
-              updateField(
-                "deliveryMethod",
-                "nuvem_envio"
-              );
-
-              setSelectedShipping(option);
+              updateField("deliveryMethod", "salvador");
+              setSelectedShipping(null);
             }}
             style={{
               width: "20px",
@@ -2130,231 +2167,154 @@ const shipping =
                 marginBottom: "5px",
               }}
             >
-              {String(option.service)
-  .toLowerCase()
-  .includes("sedex")
-    ? "Correios SEDEX"
-    : "Correios PAC"}
+              ENTREGA FIXA — SALVADOR
             </strong>
 
-            <small
-              style={{
-                color: "#666",
-              }}
-            >
-              Chega em aproximadamente{" "}
-              {option.deliveryTime} dias úteis
+            <small style={{ color: "#666" }}>
+              Chega hoje
             </small>
           </div>
 
-          <strong
+          <strong>R$ 15,00</strong>
+        </label>
+
+        {!loadingSedex && pacOption && (
+          <label
             style={{
-              fontSize: "16px",
-              whiteSpace: "nowrap",
+              display: "grid",
+              gridTemplateColumns: "32px 1fr auto",
+              gap: "14px",
+              alignItems: "center",
+              padding: "18px 14px",
+              borderBottom: "1px solid #bbb",
+              cursor: "pointer",
             }}
           >
-            {money(option.price)}
-          </strong>
+            <input
+              type="radio"
+              name="delivery"
+              checked={
+                form.deliveryMethod === "nuvem_envio" &&
+                selectedShipping?.serviceId === pacOption.serviceId
+              }
+              onChange={() => {
+                updateField("deliveryMethod", "nuvem_envio");
+                setSelectedShipping(pacOption);
+              }}
+              style={{
+                width: "20px",
+                height: "20px",
+              }}
+            />
+
+            <div>
+              <strong
+                style={{
+                  display: "block",
+                  marginBottom: "5px",
+                }}
+              >
+                Correios PAC
+              </strong>
+
+              <small style={{ color: "#666" }}>
+                Chega em aproximadamente {pacOption.deliveryTime} dias úteis
+              </small>
+            </div>
+
+            <strong>{money(pacOption.price)}</strong>
+          </label>
+        )}
+
+        <label
+          style={{
+            display: "grid",
+            gridTemplateColumns: "32px 1fr auto",
+            gap: "14px",
+            alignItems: "center",
+            padding: "18px 14px",
+            borderBottom: "1px solid #bbb",
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="radio"
+            name="delivery"
+            checked={form.deliveryMethod === "lauro"}
+            onChange={() => {
+              updateField("deliveryMethod", "lauro");
+              setSelectedShipping(null);
+            }}
+            style={{
+              width: "20px",
+              height: "20px",
+            }}
+          />
+
+          <div>
+            <strong
+              style={{
+                display: "block",
+                marginBottom: "5px",
+              }}
+            >
+              ENTREGA FIXA — LAURO DE FREITAS
+            </strong>
+
+            <small style={{ color: "#666" }}>
+              Chega hoje
+            </small>
+          </div>
+
+          <strong>R$ 15,00</strong>
         </label>
-      ))}
 
-    {/* ENTREGA FIXA SALVADOR */}
-    <label
-      style={{
-        display: "grid",
-        gridTemplateColumns: "32px 1fr auto",
-        gap: "14px",
-        alignItems: "center",
-        padding: "18px 14px",
-        borderBottom: "1px solid #bbb",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="radio"
-        name="delivery"
-        value="salvador"
-        checked={
-          form.deliveryMethod === "salvador"
-        }
-        onChange={() => {
-          updateField(
-            "deliveryMethod",
-            "salvador"
-          );
-
-          setSelectedShipping(null);
-        }}
-        style={{
-          width: "20px",
-          height: "20px",
-        }}
-      />
-
-      <div>
-        <strong
+        <label
           style={{
-            display: "block",
-            marginBottom: "5px",
+            display: "grid",
+            gridTemplateColumns: "32px 1fr auto",
+            gap: "14px",
+            alignItems: "center",
+            padding: "18px 14px",
+            borderBottom: "1px solid #bbb",
+            cursor: "pointer",
           }}
         >
-          ENTREGA FIXA — SALVADOR
-        </strong>
+          <input
+            type="radio"
+            name="delivery"
+            checked={form.deliveryMethod === "uber_99"}
+            onChange={() => {
+              updateField("deliveryMethod", "uber_99");
+              setSelectedShipping(null);
+            }}
+            style={{
+              width: "20px",
+              height: "20px",
+            }}
+          />
 
-        <small
-          style={{
-            color: "#666",
-          }}
-        >
-          Entregas de segunda a sábado
-        </small>
+          <div>
+            <strong
+              style={{
+                display: "block",
+                marginBottom: "5px",
+              }}
+            >
+              Uber Flash / 99 Entrega
+            </strong>
+
+            <small style={{ color: "#666" }}>
+              Valor do frete definido pelo aplicativo no momento da solicitação.
+              <br />
+              Chega hoje
+            </small>
+          </div>
+
+          <strong>A definir</strong>
+        </label>
       </div>
-
-      <strong
-        style={{
-          whiteSpace: "nowrap",
-        }}
-      >
-        R$ 15,00
-      </strong>
-    </label>
-
-    {/* ENTREGA FIXA LAURO DE FREITAS */}
-    <label
-      style={{
-        display: "grid",
-        gridTemplateColumns: "32px 1fr auto",
-        gap: "14px",
-        alignItems: "center",
-        padding: "18px 14px",
-        borderBottom: "1px solid #bbb",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="radio"
-        name="delivery"
-        value="lauro"
-        checked={
-          form.deliveryMethod === "lauro"
-        }
-        onChange={() => {
-          updateField(
-            "deliveryMethod",
-            "lauro"
-          );
-
-          setSelectedShipping(null);
-        }}
-        style={{
-          width: "20px",
-          height: "20px",
-        }}
-      />
-
-      <div>
-        <strong
-          style={{
-            display: "block",
-            marginBottom: "5px",
-          }}
-        >
-          ENTREGA FIXA — LAURO DE FREITAS
-        </strong>
-
-        <small
-          style={{
-            color: "#666",
-          }}
-        >
-          Entregas de segunda a sábado
-        </small>
-      </div>
-
-      <strong
-        style={{
-          whiteSpace: "nowrap",
-        }}
-      >
-        R$ 15,00
-      </strong>
-    </label>
-
-    {/* UBER FLASH / 99 */}
-    <label
-      style={{
-        display: "grid",
-        gridTemplateColumns: "32px 1fr auto",
-        gap: "14px",
-        alignItems: "center",
-        padding: "18px 14px",
-        borderBottom: "1px solid #bbb",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="radio"
-        name="delivery"
-        value="uber_99"
-        checked={
-          form.deliveryMethod === "uber_99"
-        }
-        onChange={() => {
-          updateField(
-            "deliveryMethod",
-            "uber_99"
-          );
-
-          setSelectedShipping(null);
-        }}
-        style={{
-          width: "20px",
-          height: "20px",
-        }}
-      />
-
-      <div>
-        <strong
-          style={{
-            display: "block",
-            marginBottom: "5px",
-          }}
-        >
-          Uber Flash / 99 Entrega
-        </strong>
-
-        <small
-          style={{
-            color: "#666",
-          }}
-        >
-          Valor do frete definido pelo aplicativo
-          no momento da solicitação. Chega hoje.
-        </small>
-      </div>
-
-      <strong
-        style={{
-          whiteSpace: "nowrap",
-        }}
-      >
-        A definir
-      </strong>
-    </label>
-  </div>
-
-  {onlyNumbers(form.cep).length !== 8 && (
-    <p
-      style={{
-        marginTop: "12px",
-        color: "#666",
-      }}
-    >
-      Informe seu CEP para visualizar as opções
-      de entrega.
-    </p>
-  )}
-</div>
+    </div>
             <button
               className="btn full"
               disabled={loading}
