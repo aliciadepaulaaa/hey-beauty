@@ -371,38 +371,58 @@ const onlyNumbers = (value) =>
     ""
   );
 
-const findOrder = (id) => {
-  const orders = read(ordersFile);
+const findOrder = async (id) => {
+  const result =
+    await pool.query(
+      `
+      SELECT *
+      FROM orders
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [Number(id)]
+    );
 
-  const index = orders.findIndex(
-    (order) =>
-      String(order.id) ===
-      String(id)
-  );
-
-  return {
-    orders,
-    index,
-
-    order:
-      index >= 0
-        ? orders[index]
-        : null,
+  return result.rowCount
+    ? result.rows[0]
+    : null;
+};
+const saveOrder =
+  async (order) => {
+    await pool.query(
+      `
+      UPDATE orders
+      SET
+        payment_status = $1,
+        payment_method = $2,
+        stock_decremented = $3,
+        pagbank_order_id = $4,
+        pagbank_charge_id = $5,
+        pagbank_qr_code = $6,
+        pagbank_qr_code_image = $7,
+        installments = $8,
+        payment_total = $9,
+        pix_expiration = $10,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $11
+      `,
+      [
+        order.payment_status,
+        order.payment_method,
+        Boolean(
+          order.stock_decremented
+        ),
+        order.pagbank_order_id,
+        order.pagbank_charge_id,
+        order.pagbank_qr_code,
+        order.pagbank_qr_code_image,
+        order.installments,
+        order.payment_total,
+        order.pix_expiration,
+        order.id,
+      ]
+    );
   };
-};
-
-const saveOrder = (
-  orders,
-  index,
-  order
-) => {
-  orders[index] = order;
-
-  write(
-    ordersFile,
-    orders
-  );
-};
 
 const splitPhone = (phone) => {
   let numbers = onlyNumbers(phone);
@@ -1463,13 +1483,17 @@ app.get(
 
   requireAdmin,
 
-  (req, res) => {
+  async (req, res) => {
     try {
-      const orders =
-        read(ordersFile);
+      const result =
+        await pool.query(`
+          SELECT *
+          FROM orders
+          ORDER BY id DESC
+        `);
 
       return res.json(
-        [...orders].reverse()
+        result.rows
       );
     } catch (error) {
       console.error(
@@ -1486,7 +1510,6 @@ app.get(
     }
   }
 );
-
 /* =========================================================
    CHECKOUT
 ========================================================= */
@@ -1775,142 +1798,90 @@ app.post(
          CRIAR PEDIDO
       ===================================================== */
 
-      const orders =
-        read(ordersFile);
+     const result =
+  await pool.query(
+    `
+    INSERT INTO orders (
+      customer_name,
+      cpf,
+      email,
+      phone,
 
-      const id =
-        orders.length
-          ? Math.max(
-              ...orders.map(
-                (order) =>
-                  Number(
-                    order.id ||
-                      0
-                  )
-              )
-            ) + 1
-          : 1;
+      cep,
+      street,
+      number,
+      complement,
+      neighborhood,
+      city,
+      state,
+      reference,
+      address,
 
-      const order = {
-        id,
+      delivery_method,
+      shipping_fee,
+      shipping_status,
+      shipping_service,
+      shipping_service_id,
+      shipping_delivery_time,
 
-        customer_name:
-          customer.name,
+      subtotal,
+      total,
 
-        cpf,
+      items,
 
-        email:
-          customer.email,
+      payment_status,
+      payment_method,
+      stock_decremented
+    )
+    VALUES (
+      $1,$2,$3,$4,
+      $5,$6,$7,$8,$9,$10,$11,$12,$13,
+      $14,$15,$16,$17,$18,$19,
+      $20,$21,
+      $22::jsonb,
+      $23,$24,$25
+    )
+    RETURNING *
+    `,
+    [
+      customer.name,
+      cpf,
+      customer.email,
+      customer.phone || "",
 
-        phone:
-          customer.phone ||
-          "",
+      customer.cep || "",
+      customer.street || "",
+      customer.number || "",
+      customer.complement || "",
+      customer.neighborhood || "",
+      customer.city || "",
+      customer.state || "",
+      customer.reference || "",
+      customer.address,
 
-        cep:
-          customer.cep ||
-          "",
+      delivery.method,
+      shippingFee,
+      shippingStatus,
+      shippingService,
+      shippingServiceId,
+      shippingDeliveryTime,
 
-        street:
-          customer.street ||
-          "",
+      subtotal,
+      total,
 
-        number:
-          customer.number ||
-          "",
+      JSON.stringify(details),
 
-        complement:
-          customer.complement ||
-          "",
+      "pending",
+      null,
+      false,
+    ]
+  );
 
-        neighborhood:
-          customer.neighborhood ||
-          "",
+const order =
+  result.rows[0];
 
-        city:
-          customer.city ||
-          "",
-
-        state:
-          customer.state ||
-          "",
-
-        reference:
-          customer.reference ||
-          "",
-
-        address:
-          customer.address,
-
-        delivery_method:
-          delivery.method,
-
-        shipping_fee:
-          shippingFee,
-
-        shipping_status:
-          shippingStatus,
-
-        shipping_service:
-          shippingService,
-
-        shipping_service_id:
-          shippingServiceId,
-
-        shipping_delivery_time:
-          shippingDeliveryTime,
-
-        subtotal,
-
-        total,
-
-        items:
-          details,
-
-        payment_status:
-          "pending",
-
-        payment_method:
-          null,
-
-        stock_decremented:
-          false,
-
-        pagbank_order_id:
-          null,
-
-        pagbank_charge_id:
-          null,
-
-        pagbank_qr_code:
-          null,
-
-        pagbank_qr_code_image:
-          null,
-
-        installments:
-          null,
-
-        payment_total:
-          null,
-
-        pix_expiration:
-          null,
-
-        created_at:
-          new Date()
-            .toISOString(),
-
-        updated_at:
-          new Date()
-            .toISOString(),
-      };
-
-      orders.push(order);
-
-      write(
-        ordersFile,
-        orders
-      );
+const id =
+  order.id;
 
       return res.json({
         orderId: id,
@@ -1974,12 +1945,10 @@ app.get(
           });
       }
 
-      const {
-        order,
-      } =
-        findOrder(
-          orderId
-        );
+     const order =
+  await findOrder(
+    orderId
+  );
 
       if (!order) {
         return res
@@ -2096,14 +2065,10 @@ app.post(
         orderId,
       } = req.body;
 
-      const {
-        orders,
-        index,
-        order,
-      } =
-        findOrder(
-          orderId
-        );
+      const order =
+  await findOrder(
+    orderId
+  );
 
       if (!order) {
         return res
@@ -2293,11 +2258,9 @@ app.post(
             .toISOString(),
       };
 
-      saveOrder(
-        orders,
-        index,
-        updatedOrder
-      );
+      await saveOrder(
+  updatedOrder
+);
 
       return res.json({
         ok: true,
@@ -2368,14 +2331,10 @@ app.post(
           });
       }
 
-      const {
-        orders,
-        index,
-        order,
-      } =
-        findOrder(
-          orderId
-        );
+      const order =
+  await findOrder(
+    orderId
+  );
 
       if (!order) {
         return res
@@ -2524,8 +2483,7 @@ app.post(
       /* =====================================================
          CRIAR COBRANÇA
       ===================================================== */
-
-      const payload = {
+     const payload = {
         reference_id:
           `HEY-BEAUTY-${order.id}`,
 
@@ -2660,11 +2618,6 @@ app.post(
             .toISOString(),
       };
 
-      /*
-         PAGAMENTO APROVADO:
-         baixa o estoque no PostgreSQL.
-      */
-
       if (
         status === "PAID"
       ) {
@@ -2673,9 +2626,7 @@ app.post(
         );
       }
 
-      saveOrder(
-        orders,
-        index,
+      await saveOrder(
         updatedOrder
       );
 
@@ -2733,9 +2684,8 @@ app.post(
     }
   }
 );
-
-/* =========================================================
-   WEBHOOK PAGBANK
+/*=========================================================
+   WEBHOOK PAGBANK - POSTGRESQL
 ========================================================= */
 
 app.post(
@@ -2753,32 +2703,49 @@ app.post(
         )
       );
 
-      const orders =
-        read(
-          ordersFile
-        );
+      let order = null;
 
       /*
-         Primeiro tenta localizar pelo
-         ID do pedido PagBank.
+         1) Primeiro tenta localizar
+         pelo ID do pedido do PagBank.
       */
 
-      let index =
-        orders.findIndex(
-          (order) =>
-            order.pagbank_order_id ===
-            payload?.id
-        );
+      if (
+        payload?.id
+      ) {
+        const result =
+          await pool.query(
+            `
+            SELECT *
+            FROM orders
+            WHERE pagbank_order_id = $1
+            LIMIT 1
+            `,
+            [
+              payload.id,
+            ]
+          );
+
+        if (
+          result.rowCount
+        ) {
+          order =
+            result.rows[0];
+        }
+      }
 
       /*
-         Se não encontrar,
-         procura pelo reference_id:
+         2) Se não encontrou pelo ID
+         do PagBank, tenta pelo
+         reference_id.
+
+         Exemplos:
          HEY-BEAUTY-PIX-123
          HEY-BEAUTY-123
       */
 
       if (
-        index < 0 &&
+        !order &&
         payload?.reference_id
       ) {
         const match =
@@ -2789,29 +2756,47 @@ app.post(
           );
 
         if (match) {
-          index =
-            orders.findIndex(
-              (order) =>
-                String(
-                  order.id
-                ) ===
-                String(
-                  match[1]
-                )
+          order =
+            await findOrder(
+              Number(
+                match[1]
+              )
             );
         }
       }
 
+      /*
+         3) Algumas notificações
+         podem trazer reference_id
+         dentro da cobrança.
+      */
+
+      const charge =
+        payload
+          ?.charges?.[0];
+
       if (
-        index >= 0
+        !order &&
+        charge?.reference_id
       ) {
-        let order =
-          orders[index];
+        const match =
+          String(
+            charge.reference_id
+          ).match(
+            /(\d+)$/
+          );
 
-        const charge =
-          payload
-            ?.charges?.[0];
+        if (match) {
+          order =
+            await findOrder(
+              Number(
+                match[1]
+              )
+            );
+        }
+      }
 
+      if (order) {
         /*
            PAGAMENTO CONFIRMADO
         */
@@ -2824,9 +2809,9 @@ app.post(
             "paid";
 
           /*
-             Evita baixar duas vezes.
-             decrementOrderStock verifica
-             stock_decremented.
+             A função já verifica
+             stock_decremented,
+             evitando baixa dupla.
           */
 
           if (
@@ -2863,12 +2848,13 @@ app.post(
           new Date()
             .toISOString();
 
-        orders[index] =
-          order;
+        /*
+           Agora salva o pedido
+           diretamente no PostgreSQL.
+        */
 
-        write(
-          ordersFile,
-          orders
+        await saveOrder(
+          order
         );
 
         console.log(
@@ -2880,11 +2866,6 @@ app.post(
         );
       }
 
-      /*
-         PagBank precisa receber 200
-         mesmo depois de processarmos.
-      */
-
       return res.sendStatus(
         200
       );
@@ -2895,9 +2876,9 @@ app.post(
       );
 
       /*
-         Também devolvemos 200 para
-         evitar repetição infinita
-         em caso de erro interno.
+         Mantemos 200 para evitar
+         repetição infinita da
+         notificação do PagBank.
       */
 
       return res.sendStatus(
