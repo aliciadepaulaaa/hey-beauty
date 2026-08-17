@@ -2130,15 +2130,11 @@ const shipping =
                 marginBottom: "5px",
               }}
             >
-              {option.category || "Entrega"}
-
-              {option.company
-                ? ` — ${option.company}`
-                : ""}
-
-              {option.service
-                ? ` ${option.service}`
-                : ""}
+              {String(option.service)
+  .toLowerCase()
+  .includes("sedex")
+    ? "Correios SEDEX"
+    : "Correios PAC"}
             </strong>
 
             <small
